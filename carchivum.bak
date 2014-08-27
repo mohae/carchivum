@@ -5,18 +5,16 @@
 //
 // Carchivum supports zip and tar. For tar, archiver also supports
 // the following compression:
-//
 // When using archiver, compression is not optional.
 package carchivum 
 
 import (
-	_ "compress/gzip"
+	"compress/gzip"
 	"errors"
 	_ "fmt"
 	"io"
 	"os"
 	_ "path"
-	"sync"
 	"time"
 
 	"github.com/dotcloud/tar"
@@ -31,8 +29,9 @@ const (
         BZip2Alt = "tbz2"
         Compress = "taz"
         CompressL = "tar.Z"
+
+	defaultCompresion = "tb2"
 )
-var defaultCompressionFormat = "tb2"
 
 var appendDatetimeOnCollision = true
 var datetimeFormat = "2006-01-02T150405Z0700"
@@ -69,70 +68,31 @@ func SetDatetimePrefix(s string) {
 	datetimePrefix = s
 }
 
-// SetDefaultCompressionFormat overrides the current defaultCompressionFormat
-// with the passed value. Returns an error if the format is not supported.
-func SetDefaultCompressionFormat(s string) error {
-	switch s {
-	case GZip, GZipL, BZip2, BZip2L, BZip2Alt:
-		defaultCompressionFormat = s
-		return nil
-	default:
-		return errors.New(s + " is not supported.")
-	}
+// Archive holds information about an archive.
+type Archive struct {
+	// Path to the target directory for the archive output.
+	OutDir string
 
-	return nil
-}
-
-
-// archiver is an interface for archive formats; mainly tar and zip
-type archiver interface{
-	Create(...string) error
-//        Delete() error
-//        Extract() error
-}
-
-// car is a Compressed ARchive. The struct holds information about cars.
-type car struct {
-	// Name of the archive, this includes path information, if any.
+	// Name of the archive.
 	Name string
 
 	// Compression type to be used (extension).
 	Type string
 
-	// keep track of count of readers
-	ReaderCount int
-
-	// scanneQueue queues up scans of directories.
-	ScannerQueue chan string
-
-	// readerQueue queues up reads of files.
-	ReaderQueue chan string
-
-	// blockedQueue queues up blocked items for unblocked processing
-	BlockedQueue chan string
-
-//	Output	*bufio.Writer
-
-	// synchronicity synchronizes stuff
-	Synchronicity sync.WaitGroup
-
 	// List of files to add to the archive.
 	Fi	[]os.FileInfo
 }
 
-/*
-func (a *archive) addFile(tw *tar.Writer, fi os.FileInfo) error {
-	var err error 
-
+func (a *Archive) addFile(tw *tar.Writer, fi os.FileInfo) error {
 	// It should exist, since we are 
-	file, err = os.Open(fi.Name())
+	file, err := os.Open(fi.Name())
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
 	var fileStat os.FileInfo
-	fileStat, err= file.Stat()
+	fileStat, err = file.Stat()
 	if err != nil {
 		return err
 	}
@@ -164,7 +124,7 @@ func (a *archive) addFile(tw *tar.Writer, fi os.FileInfo) error {
 
 	return nil
 }
-*/
+
 /*
 // ArchiveAndDelete creates a compressed archive of the passed sources using the
 // passed filename in the destination directory. If the archive is successfully
@@ -216,11 +176,10 @@ func (a *Archive) ArchiveAndDelete(compression, filename, destination string, so
 }
 */
 
-/*
 // AddPaths adds the contents of the passed paths. Additions are automatically
 // recursive so if a path is a directory, all the contents of that directory
 // will be added.
-func (a *archiver) AddSources(sources ...string) error {
+func (a *Archive) AddSources(sources ...string) error {
 	// Make file already exists
         if a.Fi {
 		return errors.New("An error occurred while trying to work with " + "_____________" )
@@ -240,9 +199,7 @@ func (a *archiver) AddSources(sources ...string) error {
 
 	}
 }
-*/
 
-/*
 // CreateArchive adds each file to the archive and filters the archive through
 // its configured compression format. The resulting archive is written as a
 // byte stream to its destination.
@@ -273,7 +230,6 @@ func (a *Archive) deletePriorBuild(p string) error {
 	//delete the contents of the passed directory
 	return deleteDirContent(p)
 }
-*/
 
 func formattedNow() string {
 	// Time in ISO 8601 like format. The difference being the : have been
@@ -293,4 +249,3 @@ func newArchive(appendDatetime bool, datetimePrefix, datetimeFormat string) *Arc
 
 	return archive
 }
-
