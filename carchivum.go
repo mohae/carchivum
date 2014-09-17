@@ -37,7 +37,7 @@ var maxRand = 10000
 func init() {
 	rand.Seed( time.Now().UTC().UnixNano())
 
-	supportedFormatCount = 7
+	supportedFormatCount = 8
 	supportedFormats = make([]string, supportedFormatCount)
 	supportedFormats[0] = "tgz"
 	supportedFormats[1] = "tar.gz"
@@ -46,6 +46,7 @@ func init() {
 	supportedFormats[4] = "tbz2"
 	supportedFormats[5] = "taz"
 	supportedFormats[6] = "tar.Z"
+	supportedFormats[7] = "gzip"
 
 	supportedFormatExt = make([]string, supportedFormatCount)
 	supportedFormatExt[0] = "tgz"
@@ -55,6 +56,7 @@ func init() {
 	supportedFormatExt[4] = "tbz2"
 	supportedFormatExt[5] = "taz"
 	supportedFormatExt[6] = "tar.Z"
+	supportedFormatExt[7] = "tgz"
 }
 
 // SetDateTimeFormat overrides the default date format. The passed format
