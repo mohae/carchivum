@@ -1,11 +1,15 @@
 carchivum
 =========
 
+## Status
+Under development. Initial implementation will be complete when [car](https://github.com/mohae/car)'s initial implementation is complete.
+
+## About
+
 Carchivum is a package for working with compressed archives. Archivum is latin for archives. Carchivum is not an application, just a package that other applications can use to add compressed archive support.
 
 Examples of carchivum implementations:
 
-* [baller](https://github.com/mohae/baller): is a command-line tool for creating compressed archives of targeted sources. It also supports automatic deletion of the archived files. 
 
 ## Supported archival formats
 ### Default: tar
@@ -24,12 +28,7 @@ By default the bz2 compression scheme is used with tarballs with the `.bz2` exte
 * bz2
 * gzip
 
-## Installing carchivum
-Assumptions: Go is installed and working.
-
-    $ go get https://github.com/mohae/carchivum
-
-## Adding to your application
+## Adding `carchivum` to your application
 
     import (
             "fmt"
@@ -44,7 +43,7 @@ Assumptions: Go is installed and working.
             // Create an archive of the current directory using the current
             // directory name and datetime. The suffix will automatically be
 	    // appended to.  
-            err := archiver.Create("archive{{ .Datetime }}", "."
+            err := archiver.Create("archive{{ .Datetime }}", ".")
             if err != nil {
                     fmt.Println(err.Error())
                     return
@@ -61,7 +60,7 @@ Assumptions: Go is installed and working.
 
             // Change the datetime format used. This uses Go's format; check
             // docs on specifics about valid values.
-            err = archiver.SetDatetimeFormat(RFC822)
+            err = archiver.SetDateFormat(RFC822)
             if err != nil {
                     fmt.Println(err.Error())
                     return
