@@ -31,7 +31,6 @@ var appendDate bool = true
 var dateFormat string = "2006-01-02T150405Z0700"
 var separator string = "-"
 var appendOnFilenameCollision bool = false
-
 // default max random number for random number generation.
 var maxRand = 10000
 
@@ -39,7 +38,7 @@ func init() {
 	rand.Seed( time.Now().UTC().UnixNano())
 
 	supportedFormatCount = 7
-	supportedFormats := make([]string, supportedFormatCount)
+	supportedFormats = make([]string, supportedFormatCount)
 	supportedFormats[0] = "tgz"
 	supportedFormats[1] = "tar.gz"
 	supportedFormats[2] = "tb2"
@@ -48,7 +47,7 @@ func init() {
 	supportedFormats[5] = "taz"
 	supportedFormats[6] = "tar.Z"
 
-	supportedFormatExt := make([]string, supportedFormatCount)
+	supportedFormatExt = make([]string, supportedFormatCount)
 	supportedFormatExt[0] = "tgz"
 	supportedFormatExt[1] = "tar.gz"
 	supportedFormatExt[2] = "tb2"
