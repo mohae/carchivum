@@ -38,8 +38,8 @@ type car struct {
 	// Format is the archive format, e.g. tar or zip
 	format string
 
-	// cType si the compression type to be used (extension).
-	cType string
+	// compressionType ia the compression type to be used (extension).
+	compressionType string
 
 	appendDate bool
 	appendOnFilenameCollision bool
@@ -75,7 +75,7 @@ func NewArchive() *car {
 	archive.appendOnFilenameCollision = appendOnFilenameCollision
 	archive.separator = separator
 	archive.dateFormat = dateFormat
-	archive.cType = "tar"
+	archive.compressionType = "tar"
 	archive.format = "gzip"
 	archive.t0 = time.Now()
 
@@ -146,7 +146,7 @@ func (c *car) createOutputFile(s string) (file *os.File, err error) {
 	
 			// get the default extension for this format type				
 			if ext == "" {
-				ext, err = defaultExtFromType(c.cType)
+				ext, err = defaultExtFromType(c.compressionType)
 				if err != nil {	
 					log.Error(err)
 					return nil, err
@@ -334,7 +334,7 @@ func (c *car) addFilename(fullpath string, p string, fi os.FileInfo, err error) 
 
 func (c *car) SetCompressionType(s string) error {
 	if c.compressionTypeIsSupported(s) {
-		c.cType = s
+		c.compressionType = s
 		return nil
 	}
 
@@ -412,7 +412,7 @@ func (c *car) tar() error {
 
 	var ext string
 	// Find out the compression type and wrap the tBall with it
-	switch c.cType {
+	switch c.compressionType {
 	case "gzip", "tgz", "tar.gz", "cgz", "car.gz":
 		if c.useLongExt {
 			ext = ".car.gz"
@@ -435,7 +435,7 @@ func (c *car) tar() error {
 */
 	
 	default:
-		err := fmt.Errorf("unknown compression type: %s", c.cType)
+		err := fmt.Errorf("unknown compression type: %s", c.compressionType)
 		log.Fatal(err)
 		return err
 	}

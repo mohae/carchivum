@@ -25,7 +25,7 @@ var (
 	supportedFormatCount int
 )
 
-var defaultCompressionFormat = "tb2"
+var defaultCompressionType = "tb2"
 
 var appendDate bool = true
 var dateFormat string = "2006-01-02T150405Z0700"
