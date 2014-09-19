@@ -15,8 +15,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 var (
@@ -131,7 +129,7 @@ func getFileParts(s string) (dir, file, ext string, err error) {
 		return dir, file, ext, nil
 	case 0:
 		err := fmt.Errorf("no destination filename found in %s", s)
-		log.Error(err)
+		logger.Error(err)
 		return dir, file, ext, err
 	default:
 		// join all but the last parts together with a "."
@@ -141,14 +139,14 @@ func getFileParts(s string) (dir, file, ext string, err error) {
 	}
 
 	err = fmt.Errorf("unable to determine destination filename and extension")
-	log.Error(err)
+	logger.Error(err)
 	return dir, file, ext, err
 }
 
 func defaultExtFromType(s string) (string, error) {
 	idx, err := findTypeIndex(s)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return "", err
 	}
 
@@ -163,7 +161,7 @@ func findTypeIndex(s string) (int, error) {
 	}
 
 	err := fmt.Errorf("Unsupported compression type: %s", s)
-	log.Error(err)
+	logger.Error(err)
 	return -1, err
 }
 

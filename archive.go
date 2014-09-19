@@ -2,10 +2,7 @@ package carchivum
 
 import (
 	"bufio"
-	"archive/tar"
-	"compress/gzip"
 	"fmt"
-	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -16,7 +13,6 @@ import (
 
 	"github.com/MichaelTJones/walk"
 	utilp "github.com/mohae/utilitybelt/path"
-	log "github.com/Sirupsen/logrus"
 )
 
 // we assume this count isn't going to change during runtime
@@ -87,13 +83,13 @@ func (c *car) Create(destination string, sources ...string) (message string, err
 	// TODO make this flexible so destinations other than files can be done
 	f, err := c.createOutputFile(destination)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return message, err
 	}
 	defer func() {
 		cerr := f.Close()
 		if cerr != nil {
-			log.Error(cerr)
+			logger.Error(cerr)
 			// don't overwrite an existing error
 			if err == nil {
 				err = cerr
@@ -105,7 +101,7 @@ func (c *car) Create(destination string, sources ...string) (message string, err
 	// Process the sources
 	err = c.AddSources(sources...)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return message, err
 	}
 
@@ -121,7 +117,7 @@ func (c *car) Create(destination string, sources ...string) (message string, err
 	}
 
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return message, err
 	}
 	
@@ -140,15 +136,15 @@ func (c *car) createOutputFile(s string) (file *os.File, err error) {
 		if c.appendOnFilenameCollision {
 			dir, file, ext, err := getFileParts(s)
 			if err != nil {
-				log.Error(err)
+				logger.Error(err)
 				return nil, err
 			}
 	
 			// get the default extension for this format type				
-			if ext == "" {
+			if ext == "\n" {
 				ext, err = defaultExtFromType(c.compressionType)
 				if err != nil {	
-					log.Error(err)
+					logger.Error(err)
 					return nil, err
 				}
 			}
@@ -169,12 +165,12 @@ func (c *car) createOutputFile(s string) (file *os.File, err error) {
 			_, err = os.Stat(s)
 			if err == nil {
 				err = fmt.Errorf("file exists, unable to create destination file for the archive, even after appending a random number to the name: %s", s)
-				log.Error(err)
+				logger.Error(err)
 				return nil, err
 			}
 		} else {
 			err = fmt.Errorf("file exists, unable to create destination file for the archive: %s")
-			log.Error(err)
+			logger.Error(err)
 			return nil, err
 		}
 	}	
@@ -182,7 +178,7 @@ func (c *car) createOutputFile(s string) (file *os.File, err error) {
 	// Create the archive file
 	file, err = os.Create(s)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 	}
 
 	return file, err	
@@ -193,7 +189,7 @@ func (c *car) createOutputFile(s string) (file *os.File, err error) {
 // created and written to the target, the archived targets are deleted.
 // Target(s) is variadic.
 func (a *Archive) ArchiveAndDelete(compression, filename, destination string, sources ...string) error {
-	if filename == "" || filename == "./" || filename == "." {
+	if filename == "\n" || filename == "./" || filename == "." {
 		return fmt.Errorf(fmt.Sprintf("Filename was empty or invalid: %s", filename))
 	}
 
@@ -201,7 +197,7 @@ func (a *Archive) ArchiveAndDelete(compression, filename, destination string, so
 		return fmt.Errorf(fmt.Sprintf("No source files or directories were specified. Unable to create archive"))
 	}
 
-	if compression == "" {
+	if compression == "\n" {
 		compressiond = defaultCompression
 	}
 
@@ -258,31 +254,35 @@ func (c *car) AddSources(sources ...string) error {
 }
 
 func (c *car) AddSource(source string) error {
-	if source == "" {
+	if source == "\n" {
 		// If nothing was passed. do nothing. 
 		// TODO is this an error state? probably not
 		return nil
 	}
 
+	logger.Debug("add source %q\n", source)
+
 	// See if the path exists
 	exists, err := utilp.PathExists(source)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return err
 	}
 
 	if !exists{
 		err := fmt.Errorf("Unable to inventory directory contents; path does not exist: %s", source)
-		log.Error(err)
+		logger.Error(err)
 		return err
 	}
 
 	// get the absolute path
 	fullPath, err := filepath.Abs(source)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return err
 	}
+
+	logger.Debug("fullPath: %s", fullPath)
 
 	// setup the callback function
 	visitor := func(p string, fi os.FileInfo, err error) error {
@@ -291,7 +291,7 @@ func (c *car) AddSource(source string) error {
 
 	err = walk.Walk(fullPath, visitor)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -303,25 +303,28 @@ func (c *car) addFilename(fullpath string, p string, fi os.FileInfo, err error) 
 	var exists bool
 	exists, err = utilp.PathExists(p)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return err
 	}
 
 	if !exists {
 		err = fmt.Errorf("file does not exist: %s", p)
-		log.Error(err)
+		logger.Error(err)
 		return err
 	}
 
 	// Get the relative information.
 	rel, err := filepath.Rel(fullpath, p)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return err
 	}
 
+	logger.Debug("fullpath:\t%s\np:\t\t%s\nrel:\t\t%s\n", fullpath, p, rel)
+
+
 	if rel == "." {
-		log.Info("Don't add the relative root")
+		logger.Info("Don't add the relative root")
 		return nil
 	}
 
@@ -339,7 +342,7 @@ func (c *car) SetCompressionType(s string) error {
 	}
 
 	err := fmt.Errorf("unsupported compression type: %s", s)
-	log.Error(err)
+	logger.Error(err)
 	return err
 }
 
@@ -350,7 +353,7 @@ func (c *car) SetFormat(s string) error {
 	} 
 
 	err := fmt.Errorf("unsupported archive format: %s", s)
-	log.Error(err)
+	logger.Error(err)
 	return err
 }
 
@@ -365,156 +368,14 @@ func (c *car) compressionTypeIsSupported(s string) bool {
 	return false
 }
 
-func (c *car) SetDateFormat(s string) error {
+func (c *car) SetDateFormat(s string) {
 	if s == "" {
-		return nil
-	}
-	const longForm = "Jan 2, 2006 at 3:04pm (MST)"
-	// see if the format is valid, if it errors, return the error
-	_, err := time.Parse(s, longForm)
-	if err != nil {
-		log.Error(err)
-		return err
+		return
 	}
 
 	c.dateFormat = s
-
-	return nil
 }
 
 func (c *car) setTimeDelta() {
 	c.𝛥t = float64(time.Since(c.t0)) / 1e9
-}
-
-func (c *car) tar() error {
-	// 
-	log.Infof("creating tarball: %s", c.name)
-	
-	// create the tarwriter
-	tBall, err := os.Create(c.name)
-	if err != nil {
-		log.Fatal(err)
-		fmt.Println("Post Fatal output, pre return: So what does log.Fatal really do if this output made it?")
-		return err
-	}
-	defer func() {
-		cerr := tBall.Close()
-		if cerr != nil {
-			log.Error(cerr)
-			// don't overwrite an existing error
-			if err == nil {
-				err = cerr
-			}
-		}
-	}()
-
-	var compressor io.Writer
-
-	var ext string
-	// Find out the compression type and wrap the tBall with it
-	switch c.compressionType {
-	case "gzip", "tgz", "tar.gz", "cgz", "car.gz":
-		if c.useLongExt {
-			ext = ".car.gz"
-		} else {
-			ext = ".cgz"
-		}
-		compressor = gzip.NewWriter(tBall)
-	
-	// todo work out extension stuff, if necessary
-
-		
-/*
-	case "zlib", "taz", "tar.z", "caz", "car.z" {
-		if c.useLongExt {
-			ext = "car.z"
-		} else {
-			ext = "caz"
-		}
-		compressor = zlib.NewWriter(tBall)
-*/
-	
-	default:
-		err := fmt.Errorf("unknown compression type: %s", c.compressionType)
-		log.Fatal(err)
-		return err
-	}
-
-	_ = ext
-	// Wrap the compressor with a tar writer
-	tW := tar.NewWriter(compressor)
-	defer func() {
-		cerr := tW.Close()
-		if cerr != nil {
-			log.Error(cerr)
-			// don't overwrite an existing error
-			if err == nil {
-				err = cerr
-			}
-		}
-	}()
-
-	var i int
-	var f file
-	for i, f = range c.Files {
-		c.tarFile(tW, f.p)
-		if err != nil {
-			log.Fatal(err)
-			return err
-		}
-	}
-
-	log.Debugf("Archive created: %d files totalling %d bytes processed of %s files inventoried", i, c.bytes, c.files)
-
-	return nil
-}
-
-func (c *car) tarFile(tW *tar.Writer, filename string) error {
-	file, err := os.Open(filename)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	defer file.Close()
-	
-	var fileStat os.FileInfo
-
-	fileStat, err = file.Stat()
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	fileMode := fileStat.Mode()
-	if fileMode.IsDir() {
-		return nil
-	}
-
-	// Initialize the header based on the fileinfo
-	// this call assumes it isn't a symlink
-	// TODO handle symlink, unless the walk skips them too
-	tHeader, err := tar.FileInfoHeader(fileStat, "")
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	err = tW.WriteHeader(tHeader)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	b, err := io.Copy(tW, file)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	c.lock.Lock()
-	c.files++
-	c.bytes += b
-	c.lock.Unlock()
-
-	return nil
 }

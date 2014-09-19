@@ -3,7 +3,7 @@ package carchivum
 
 import (
 	"archive/tar"
-	_ "compress/gzip"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"os"
@@ -105,3 +105,136 @@ func (t *Tar) CreateFile() {
 	return nil
 }
 */
+
+func (c *car) tar() error {
+	// 
+	logger.Infof("creating tarball: %s", c.name)
+	
+	// create the tarwriter
+	tBall, err := os.Create(c.name)
+	if err != nil {
+		logger.Error(err)
+		fmt.Println("Post Fatal output, pre return: So what does logger.Fatal really do if this output made it?")
+		return err
+	}
+	defer func() {
+		cerr := tBall.Close()
+		if cerr != nil {
+			logger.Error(cerr)
+			// don't overwrite an existing error
+			if err == nil {
+				err = cerr
+			}
+		}
+	}()
+
+	var compressor io.Writer
+
+	var ext string
+	// Find out the compression type and wrap the tBall with it
+	switch c.compressionType {
+	case "gzip", "tgz", "tar.gz", "cgz", "car.gz":
+		if c.useLongExt {
+			ext = ".car.gz"
+		} else {
+			ext = ".cgz"
+		}
+		compressor = gzip.NewWriter(tBall)
+	
+	// todo work out extension stuff, if necessary
+
+		
+/*
+	case "zlib", "taz", "tar.z", "caz", "car.z" {
+		if c.useLongExt {
+			ext = "car.z"
+		} else {
+			ext = "caz"
+		}
+		compressor = zlib.NewWriter(tBall)
+*/
+	
+	default:
+		err := fmt.Errorf("unknown compression type: %s", c.compressionType)
+		logger.Error(err)
+		return err
+	}
+
+	_ = ext
+	// Wrap the compressor with a tar writer
+	tW := tar.NewWriter(compressor)
+	defer func() {
+		cerr := tW.Close()
+		if cerr != nil {
+			logger.Error(cerr)
+			// don't overwrite an existing error
+			if err == nil {
+				err = cerr
+			}
+		}
+	}()
+
+	var i int
+	var f file
+	for i, f = range c.Files {
+		c.tarFile(tW, f.p)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+	}
+
+	logger.Debugf("Archive created: %d files totalling %d bytes processed of %s files inventoried", i, c.bytes, c.files)
+
+	return nil
+}
+
+func (c *car) tarFile(tW *tar.Writer, filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+	defer file.Close()
+	
+	var fileStat os.FileInfo
+
+	fileStat, err = file.Stat()
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	fileMode := fileStat.Mode()
+	if fileMode.IsDir() {
+		return nil
+	}
+
+	// Initialize the header based on the fileinfo
+	// this call assumes it isn't a symlink
+	// TODO handle symlink, unless the walk skips them too
+	tHeader, err := tar.FileInfoHeader(fileStat, "\n")
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	err = tW.WriteHeader(tHeader)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	b, err := io.Copy(tW, file)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	c.lock.Lock()
+	c.files++
+	c.bytes += b
+	c.lock.Unlock()
+
+	return nil
+}
