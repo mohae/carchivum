@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -58,9 +59,18 @@ type car struct {
 }
 
 type file struct {
-	// The file's path
-	p string
-	
+	// The filename
+	name string
+
+	// The file's directory path
+	dirPath string
+
+	// The file's fullpath
+	fullPath string
+
+	// parentDir of the filename
+	parentDir string
+
 	// The file's FileInfo
 	fi os.FileInfo
 }
@@ -95,8 +105,8 @@ func (c *car) Create(destination string, sources ...string) (message string, err
 				err = cerr
 			}
 		}
+		logger.Debugf("Archive %q created", destination)
 	}()
-
 
 	// Process the sources
 	err = c.AddSources(sources...)
@@ -108,7 +118,7 @@ func (c *car) Create(destination string, sources ...string) (message string, err
 	// use the appropriate archive
 	switch c.format {
 	case "tar":
-		err = c.tar()
+		err = c.CreateTar(f)
 	case "zip":
 		fmt.Println("Zip not implemented")
 //		err = c.Zip()
@@ -126,7 +136,7 @@ func (c *car) Create(destination string, sources ...string) (message string, err
 }
 
 func (c *car) createOutputFile(s string) (file *os.File, err error) {
-	// There is a small chance that things will mutatue on us since we are
+	// There is a small chance that things will mutate on us since we are
 	// just stat'ing the file's existence. But that's a risk we'll take,
 	// for now.
 
@@ -181,6 +191,7 @@ func (c *car) createOutputFile(s string) (file *os.File, err error) {
 		logger.Error(err)
 	}
 
+	c.name = s
 	return file, err	
 }
 /*
@@ -234,13 +245,13 @@ func (a *Archive) ArchiveAndDelete(compression, filename, destination string, so
 }
 */
 
-// AddSources adds the sources to the archive. This does not perform the walk
-// of resources, just the add.
+// AddSources adds the sources to the archive. This does not do anything with
+// the resources, just add their information to the list to process later.
 func (c *car) AddSources(sources ...string) error {
 	if len(sources) == 0 {
 		return fmt.Errorf("nothing to archive, no sources received")
 	}
-	
+
 	for _, source := range sources {
 		err := c.AddSource(source)
 		if err != nil {
@@ -260,7 +271,7 @@ func (c *car) AddSource(source string) error {
 		return nil
 	}
 
-	logger.Debug("add source %q\n", source)
+	logger.Debugf("add source %q\n", source)
 
 	// See if the path exists
 	exists, err := utilp.PathExists(source)
@@ -275,18 +286,18 @@ func (c *car) AddSource(source string) error {
 		return err
 	}
 
-	// get the absolute path
+	// get the absolute path to the file
 	fullPath, err := filepath.Abs(source)
 	if err != nil {
 		logger.Error(err)
 		return err
 	}
 
-	logger.Debug("fullPath: %s", fullPath)
+	logger.Debugf("fullPath of source %q: %s", source, fullPath)
 
 	// setup the callback function
-	visitor := func(p string, fi os.FileInfo, err error) error {
-		return c.addFilename(fullPath, p, fi, err)
+	visitor := func(fullPath string, fi os.FileInfo, err error) error {
+		return c.addFilename(source, fullPath, fi, err)
 	}
 
 	err = walk.Walk(fullPath, visitor)
@@ -298,38 +309,42 @@ func (c *car) AddSource(source string) error {
 	return nil
 }
 
-func (c *car) addFilename(fullpath string, p string, fi os.FileInfo, err error) error {
+func (c *car) addFilename(parentDir string, fullPath string, fi os.FileInfo, err error) error {
+	if strings.HasSuffix(fullPath, parentDir) {	
+		logger.Debugf("%s %s, don't add if source is the source directory", fullPath, parentDir)
+		return nil
+	}
+	// See if the dir
 	// See if the path exists
 	var exists bool
-	exists, err = utilp.PathExists(p)
+	exists, err = utilp.PathExists(fullPath)
 	if err != nil {
 		logger.Error(err)
 		return err
 	}
 
 	if !exists {
-		err = fmt.Errorf("file does not exist: %s", p)
+		err = fmt.Errorf("file does not exist: %s", fullPath)
 		logger.Error(err)
 		return err
 	}
 
-	// Get the relative information.
-	rel, err := filepath.Rel(fullpath, p)
+	var relPath string
+	relPath, err = filepath.Rel(parentDir, fi.Name())
 	if err != nil {
 		logger.Error(err)
 		return err
 	}
 
-	logger.Debug("fullpath:\t%s\np:\t\t%s\nrel:\t\t%s\n", fullpath, p, rel)
-
-
-	if rel == "." {
+	logger.Debugf("filename: %s", relPath)
+	if relPath == "." {
 		logger.Info("Don't add the relative root")
 		return nil
 	}
 
+	logger.Debugf("\nname:\t%s\nfullpath:\t%s\nrelPath:\t\t%s\nparentDir:\t\t%s\n", fi.Name(), fullPath, relPath, parentDir)
 	// Add the file information.
-	c.Files = append(c.Files, file{p: rel, fi: fi})
+	c.Files = append(c.Files, file{name: fi.Name(), fullPath: fullPath, dirPath: relPath, parentDir: parentDir, fi: fi})
 	return nil
 }
 
@@ -368,6 +383,8 @@ func (c *car) compressionTypeIsSupported(s string) bool {
 	return false
 }
 
+// TODO should empty formats be allowed, i.e. setting it to empty to override
+// the default, or should a valid value be required to override the default.
 func (c *car) SetDateFormat(s string) {
 	if s == "" {
 		return
