@@ -11,107 +11,149 @@ package carchivum
 
 import (
 	"fmt"
-	"math/rand"
+	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
-var (
-	supportedFormats []string
-	supportedFormatExt []string
-	supportedFormatCount int
+const (
+	Uncompressed Compression = iota
+	Gzip
 )
 
-var defaultCompressionType = "tb2"
+const (
+	InvalidFormat Format = iota
+	TarFormat
+	ZipFormat
+)
 
-var appendDate bool = true
-var dateFormat string = "2006-01-02T150405Z0700"
-var separator string = "-"
-var appendOnFilenameCollision bool = false
+type (
+	Compression int
+	Format int
+)
+
+var defaultCompression Compression = Gzip
+var defaultFormat Format = TarFormat
+
+// Options
+var AppendDate bool
+var TimeFormat string = time.RFC3339
+var UseNano bool
+var Separator string = "-"
+var MakeUnique bool = false
 // default max random number for random number generation.
-var maxRand = 10000
+var MaxRand = 10000
 
-func init() {
-	rand.Seed( time.Now().UTC().UnixNano())
+// we assume this count isn't going to change during runtime
+var cpu int = runtime.NumCPU()
 
-	supportedFormatCount = 8
-	supportedFormats = make([]string, supportedFormatCount)
-	supportedFormats[0] = "tgz"
-	supportedFormats[1] = "tar.gz"
-	supportedFormats[2] = "tb2"
-	supportedFormats[3] = "tar.bz2"
-	supportedFormats[4] = "tbz2"
-	supportedFormats[5] = "taz"
-	supportedFormats[6] = "tar.Z"
-	supportedFormats[7] = "gzip"
+// Arbitrarily set the multiplier to some default value.
+var CPUMultiplier int = 4
 
-	supportedFormatExt = make([]string, supportedFormatCount)
-	supportedFormatExt[0] = "tgz"
-	supportedFormatExt[1] = "tar.gz"
-	supportedFormatExt[2] = "tb2"
-	supportedFormatExt[3] = "tar.bz2"
-	supportedFormatExt[4] = "tbz2"
-	supportedFormatExt[5] = "taz"
-	supportedFormatExt[6] = "tar.Z"
-	supportedFormatExt[7] = "tgz"
+// Car is a Compressed Archive. The struct holds information about Cars and
+// their processing.
+type Car struct {
+	// Name of the archive, this includes path information, if any.
+	Name string
+	UseLongExt bool
+	UseFullpath bool
+	FileCh	chan *os.File
+
+	// Other Counters
+	counterLock sync.Mutex
+	files int32
+	bytes int64
+	compressedBytes int64
+	
+	// timer
+	t0 time.Time
+	𝛥t float64
 }
 
-// SetDateTimeFormat overrides the default date format. The passed format
-// must use Go's date format.
-func SetDateFormat(s string) {
-	dateFormat = s
+func (c *Car) setDelta() {
+	c.𝛥t = float64(time.Since(c.t0)) / 1e9
 }
 
-// SetAppendDate sets whether the tarball names should be
-// automatically appended with the current date, using the dateFormat,
-// when a name collision occurs on the archive filename. The appended date
-// will be prefixed with -, unless that is overridden.
-//
-//     appendDate = true: appends the current date, using
-//         the configured dateFormat. If that name collides, it either
-//         errors or appends a random 4 digit number, depending on config.
-//
-//     appendDate = false: if a collision occurs on the filename
-//         an error is returned, instead of automatically appending the current
-//         date.
-func SetAppendDate(b bool) {
-	appendDate = b
+func (c *Car) Delta() float64 {
+	return c.𝛥t
 }
 
-// SetDatePrefix overrides the default date prefix of `-`. The date
-// prefix is used to to prefix the date prior to appending it to the
-// filename, e.g. filename-date.tgz.
-//
-// To not use a prefix, set it to an emptys string, ""
-func SetSeparator(s string) {
-	separator = s
+func (c *Car) Message() string {
+	return fmt.Sprintf("%q created in %4f seconds\n%d files totalling %d bytes were processed", c.Name, c.𝛥t, c.files, c.bytes)
 }
 
-/*
-TODO
-// SetDefaultCompressionFormat overrides the current defaultCompressionFormat
-// with the passed value. Returns an error if the format is not supported.
-func SetDefaultCompressionFormat(s string) error {
-	switch s {
-	case GZip, GZipL, BZip2, BZip2L, BZip2Alt:
-		defaultCompressionFormat = s
-	default:
-		return fmt.Errorf("compression type not supported: %s", s)
+// addFile  reads a file and pipes it to the zipper goroutine.
+func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
+	logger.Debugf("root: %s, p: %s, fi.Name: %s", root, p, fi.Name())
+	// Don't add symlinks, otherwise would have to code some cycle
+	// detection amongst other stuff.
+	if fi.Mode() & os.ModeSymlink == os.ModeSymlink {
+		logger.Debugf("don't follow symlinks: %q", p)
+		return nil
 	}
 
+	if strings.HasSuffix(root, p) {
+		logger.Debugf("%s | %s, don't add if source is the source directory", root, p)
+		return nil
+	}
+
+	var relPath string
+	relPath, err = filepath.Rel(root, p)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	if relPath == "," {
+		logger.Debug("Don't add relative root")
+		return nil
+	}
+
+	if !c.UseFullpath {
+		p = filepath.Join(filepath.Base(root), relPath)
+	} 
+	
+	f, err := os.Open(p)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	c.counterLock.Lock()
+	c.files++
+	c.bytes += fi.Size()
+	c.counterLock.Unlock()
+
+	c.FileCh <- f
+
 	return nil
 }
-*/
 
-func (c *car) deleteDir(d string) error {
-	//delete the contents of the passed directory
-//	return deleteDirContent(d)
-	return nil
+func ParseType(s string) (Compression, error) {
+	switch s {
+	case "gzip", "tar.gz", "tgz":
+		return Gzip, nil
+	}
+
+	return Uncompressed, fmt.Errorf("unsupported compression: %s", s)
+}
+
+func ParseFormat(s string) (Format, error) {
+	switch s {
+	case "tar":
+		return TarFormat, nil
+	case "zip":
+		return ZipFormat, nil
+	}
+	
+	return InvalidFormat, fmt.Errorf("invalid archive format: %s", s)
 }
 
 func formattedNow() string {
-	return time.Now().Local().Format(dateFormat)
+	return time.Now().Local().Format(TimeFormat)
 }
 
 func getFileParts(s string) (dir, file, ext string, err error) {
@@ -143,33 +185,4 @@ func getFileParts(s string) (dir, file, ext string, err error) {
 	return dir, file, ext, err
 }
 
-func defaultExtFromType(s string) (string, error) {
-	idx, err := findTypeIndex(s)
-	if err != nil {
-		logger.Error(err)
-		return "", err
-	}
-
-	return supportedFormatExt[idx], nil
-}
-
-func findTypeIndex(s string) (int, error) {
-	for i := 0; i < supportedFormatCount; i++ {
-		if s == supportedFormats[i] {
-			return i, nil
-		}
-	}
-
-	err := fmt.Errorf("Unsupported compression type: %s", s)
-	logger.Error(err)
-	return -1, err
-}
-
-// SetMaxRand overrides the default random number range. It can be set to a
-// value that more suits the user's need, if necessary.
-func SetMaxRand(i int) {
-	if i > 0 {
-		maxRand = i
-	}
-}
 
