@@ -42,6 +42,7 @@ func TestZipBytes(t *testing.T) {
 
 }
 */
+/*
 func TestZipFiles(t *testing.T) {
 	tests := []struct{
 		value []string
@@ -69,6 +70,7 @@ func TestZipFiles(t *testing.T) {
 		assert.Equal(t, test.expected, res)
 	}
 }
+*/
 func TestZipBytes(t *testing.T) {
 	b := []byte("Test ZipBytes using this string. Its short, but long enough to prove things work")
 	
@@ -77,7 +79,7 @@ func TestZipBytes(t *testing.T) {
 	assert.Equal(t, 8, len(zb))
 	assert.Equal(t, "adfaf", string(zb))
 }
-
+/*
 func TestAddFile(t *testing.T) {
 	tests := []struct{
 		value string
@@ -101,7 +103,8 @@ func TestAddFile(t *testing.T) {
 
 		assert.Nil(t, err)
 		assert.Equal(t, test.expectedB, b)
-		assert.Equal                                                                                                                                                                  
+                                                                                                                                                        
 		w.Close()
 	}
 }
+*/

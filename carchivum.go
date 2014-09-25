@@ -60,6 +60,10 @@ type Car struct {
 	Name string
 	UseLongExt bool
 	UseFullpath bool
+	exclude []string
+	useExclude bool
+	include []string
+	useInclude bool
 	FileCh	chan *os.File
 
 	// Other Counters
@@ -100,6 +104,22 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 		return nil
 	}
 
+	if c.useInclude {
+		addfile := c.includeFile(p)
+		if !addfile {
+			logger.Debugf("don't include %q", p)
+			return nil
+		}
+	}
+
+	if c.useExclude {
+		excludeFile := c.excludeFile(p)
+		if excludeFile {
+			logger.Debugf("exclude %q", p)
+			return nil
+		}
+	}
+
 	var relPath string
 	relPath, err = filepath.Rel(root, p)
 	if err != nil {
@@ -130,6 +150,60 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 	c.FileCh <- f
 
 	return nil
+}
+
+func (c *Car) SetInclude(s ...string) {
+//	c.Include = make([]string, len(s))
+	c.include = s
+
+	// Include takes precedence, don't use exclude if its being used.
+	c.useExclude = false
+	c.useInclude = true
+}
+
+func (c *Car) SetExclude(s ...string) {
+//	c.Exclude = make([]string, len(s))
+	c.exclude = s
+
+	// Include takes precedence; if its being used, don't process include.
+	if !c.useInclude {
+		c.useExclude = true
+	}
+}
+
+func (c *Car) includeFile(k string) bool {
+	for _, v := range c.include {
+		// first see if the specific file matches
+		if v == k {
+			return true
+		}
+
+		// then see if the extension matches
+		_, _, ext, _ := getFileParts(k)
+		if v == ext {
+			return true
+		}
+	}
+
+	return false	
+}
+
+func (c *Car) excludeFile(k string) bool {
+	for _, v := range c.exclude {
+		// first see if the specific file matches
+		if v == k {
+			return true
+		}
+
+		// then see if the extension matches
+		_, _, ext, _ := getFileParts(k)
+		if v == ext {
+			return true
+		}
+	}
+
+	return false	
+
 }
 
 func ParseType(s string) (Compression, error) {
@@ -184,5 +258,3 @@ func getFileParts(s string) (dir, file, ext string, err error) {
 	logger.Error(err)
 	return dir, file, ext, err
 }
-
-
