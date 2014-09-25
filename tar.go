@@ -17,12 +17,12 @@ import (
 type Tar struct {
 	Car
 	writer *tar.Writer
-	compression	Compression
+	format	Format
 	sources []string
 }
 
 func NewTar() *Tar {
-	return &Tar{Car: Car{t0: time.Now()}, compression: defaultCompression, sources: []string{}}
+	return &Tar{Car: Car{t0: time.Now()}, format: defaultFormat, sources: []string{}}
 }
 
 func (t *Tar) CreateFile(destination string, sources ...string) (cnt int, err error) {
@@ -57,8 +57,8 @@ func (t *Tar) CreateFile(destination string, sources ...string) (cnt int, err er
 		}
 	}()
 
-	switch t.compression {
-	case Gzip:
+	switch t.format {
+	case FmtGzip:
 		err = t.CreateGzip(tball)
 		if err != nil {
 			logger.Error(err)

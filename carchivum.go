@@ -7,10 +7,13 @@
 // the following compression:
 //
 // When using archiver, compression is not optional.
+//
 package carchivum
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -20,23 +23,141 @@ import (
 )
 
 const (
-	Uncompressed Compression = iota
-	Gzip
+	FmtUnsupported Format = iota
+	FmtGzip
+	FmtTar
+	FmtTar1
+	FmtTar2
+	FmtZip
+	FmtZipEmpty
+	FmtZipSpanned
+	FmtBzip2
+	FmtLZH
+	FmtLZW
+	FmtRAR
+	FmtRAROld
 )
 
-const (
-	InvalidFormat Format = iota
-	TarFormat
-	ZipFormat
+
+// Header information for common archive/compression formats.
+// Zip includes: zip, jar, odt, ods, odp, docx, xlsx, pptx, apx, odf, ooxml
+var (
+	headerGzip []byte = []byte{0x1f, 0x8b}
+	headerTar1 []byte = []byte{0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x30, 0x30} // offset: 257
+	headerTar2 []byte = []byte{0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x20, 0x00} // offset: 257
+	headerZip []byte = []byte{0x50, 0x4b, 0x03, 0x04}
+	headerZipEmpty []byte = []byte{0x50, 0x4b, 0x05, 0x06}
+	headerZipSpanned []byte = []byte{0x50, 0x4b, 0x07, 0x08}
+	headerBzip2 []byte = []byte{0x42, 0x5a, 0x68}
+	headerLZH []byte = []byte{0x1F, 0xa0}
+	headerLZW []byte = []byte{0x1F, 0x9d}
+	headerRAR []byte = []byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x01, 0x00}
+	headerRAROld []byte = []byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00}
 )
+
+func GetFileFormat(r io.ReaderAt) (Format, error) {
+	h := make([]byte, 8, 8)
+	
+	r.ReadAt(h, 0)
+
+	if bytes.Equal(headerGzip, h[0:2]) {
+		return FmtGzip, nil
+	}
+
+	if bytes.Equal(headerZip, h[0:4]) {
+		return FmtZip, nil
+	}
+
+	r.ReadAt(h, 257)
+	if bytes.Equal(headerTar1, h) || bytes.Equal(headerTar2, h) {
+		return FmtTar, nil
+	}
+
+	// unsupported
+	if bytes.Equal(headerRAROld, h) {
+		return FmtUnsupported, FmtRAROld.NotSupportedError()
+	}
+
+	if bytes.Equal(headerRAR, h) {
+		return FmtUnsupported, FmtRAR.NotSupportedError()
+	}
+
+	r.ReadAt(h, 0)
+	if bytes.Equal(headerZipEmpty, h[0:4]) {
+		return FmtUnsupported, FmtZipEmpty.NotSupportedError()
+	}
+
+	if bytes.Equal(headerZipSpanned, h[0:4]) {
+		return FmtUnsupported, FmtZipSpanned.NotSupportedError()
+	}
+
+	if bytes.Equal(headerBzip2, h[0:3]) {
+		return FmtUnsupported, FmtBzip2.NotSupportedError()
+	}	
+
+	if bytes.Equal(headerLZW, h[0:2]) {
+		return FmtUnsupported, FmtLZW.NotSupportedError()
+	}	
+
+	if bytes.Equal(headerLZH, h[0:2]) {
+		return FmtUnsupported, FmtLZH.NotSupportedError()
+	}	
+
+	return FmtUnsupported, FmtUnsupported.NotSupportedError()
+}
 
 type (
-	Compression int
 	Format int
 )
 
-var defaultCompression Compression = Gzip
-var defaultFormat Format = TarFormat
+func (f Format) ToString() string {
+	switch f {
+	case FmtGzip:
+		return "gzip"
+	case FmtTar1, FmtTar2:
+		return "tar"
+	case FmtZip:
+		return "zip"
+	case FmtZipEmpty:
+		return "empty zip archive"
+	case FmtZipSpanned:
+		return "spanned zip archive"
+	case FmtBzip2:
+		return "bzip2"
+	case FmtLZH:
+		return "LZH"
+	case FmtLZW:
+		return "LZW"
+	case FmtRAR:
+		return "RAR post 5.0"
+	case FmtRAROld:
+		return  "RAR pre 1.5"
+	}
+	return "unsupported"
+}
+	
+func (f Format) NotSupportedError() error {
+	switch f {
+	case FmtZipEmpty:
+		return fmt.Errorf("empty zip archive is not supported")
+	case FmtZipSpanned:
+		return fmt.Errorf("spanned zip archive is not supported")
+	case FmtBzip2 :
+		return fmt.Errorf("bzip2 is not supported")
+	case FmtLZH:
+		return fmt.Errorf("LZH is not supported")
+	case FmtLZW:
+		return fmt.Errorf("LZW is not supported")
+	case FmtRAR:
+		return fmt.Errorf("RAR post 5.0 is not supported")
+	case FmtRAROld:
+		return fmt.Errorf("RAR pre 1.5 is not supported")
+	}
+	return fmt.Errorf("unsupported format error, more specific information unavailable")
+}
+	
+
+var defaultFormat Format = FmtGzip
 
 // Options
 var AppendDate bool
@@ -206,24 +327,17 @@ func (c *Car) excludeFile(k string) bool {
 
 }
 
-func ParseType(s string) (Compression, error) {
-	switch s {
-	case "gzip", "tar.gz", "tgz":
-		return Gzip, nil
-	}
-
-	return Uncompressed, fmt.Errorf("unsupported compression: %s", s)
-}
-
 func ParseFormat(s string) (Format, error) {
 	switch s {
+	case "gzip", "tar.gz", "tgz":
+		return FmtGzip, nil
 	case "tar":
-		return TarFormat, nil
+		return FmtTar, nil
 	case "zip":
-		return ZipFormat, nil
+		return FmtZip, nil
 	}
 	
-	return InvalidFormat, fmt.Errorf("invalid archive format: %s", s)
+	return FmtUnsupported, FmtUnsupported.NotSupportedError()
 }
 
 func formattedNow() string {
