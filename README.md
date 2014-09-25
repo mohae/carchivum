@@ -25,6 +25,26 @@ Carchivum only supports the `gzip` compression algorithm for tarballs. Support f
 
 * gzip
 
+### Options
+
+```
+format       string          The archive format to use. (DEFAULT=tar)
+type         string          The compression type to use. This is only used
+                             when the archive format is tar. (DEFAULT=gzip)
+usefullpath  bool            If files should be archives using their fullpath
+                             or relative paths. (DEFAULT=false)
+exclude	     string array    A comma separated list of files or extensions to
+                             exclude from the archive. exclude is mutually
+                             exclusive with include.
+include      string array    A comma separated list of files or extensions to
+                             include with the archive. include is mutually
+                             exclusive with exclude; include takes precedence.
+since        string          Only archive files that are either new or have
+                             been modified since the value specified.
+relative     string          Only archive files that are either new or have
+                             been modified in the timeframe relative to now.
+```
+
 ## Adding `carchivum` to your application
 
 
