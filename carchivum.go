@@ -181,10 +181,27 @@ type Car struct {
 	Name string
 	UseLongExt bool
 	UseFullpath bool
-	exclude []string
-	useExclude bool
-	include []string
-	useInclude bool
+
+	// Create operation modifiers
+	Owner int
+	Group int
+	Mode os.FileMode
+
+	// Extract operation modifiers
+
+
+	// Local file selection
+	DeleteFiles bool
+
+	Exclude string
+	ExcludeExt []string
+	ExcludeAnchored string
+
+	Include string
+	IncludeExt []string
+	IncludeAnchored string
+
+	// Processing queue
 	FileCh	chan *os.File
 
 	// Other Counters
@@ -225,20 +242,18 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 		return nil
 	}
 
-	if c.useInclude {
-		addfile := c.includeFile(p)
-		if !addfile {
-			logger.Debugf("don't include %q", p)
-			return nil
-		}
+
+	b := c.includeFile(p)
+	if !b {
+		logger.Debugf("don't include %q", p)
+		return nil
 	}
 
-	if c.useExclude {
-		excludeFile := c.excludeFile(p)
-		if excludeFile {
-			logger.Debugf("exclude %q", p)
-			return nil
-		}
+
+	b := c.excludeFile(p)
+	if b {
+		logger.Debugf("exclude %q", p)
+		return nil
 	}
 
 	var relPath string
@@ -273,59 +288,34 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 	return nil
 }
 
-func (c *Car) SetInclude(s ...string) {
-//	c.Include = make([]string, len(s))
-	c.include = s
-
-	// Include takes precedence, don't use exclude if its being used.
-	c.useExclude = false
-	c.useInclude = true
-}
-
-func (c *Car) SetExclude(s ...string) {
-//	c.Exclude = make([]string, len(s))
-	c.exclude = s
-
-	// Include takes precedence; if its being used, don't process include.
-	if !c.useInclude {
-		c.useExclude = true
-	}
-}
 
 func (c *Car) includeFile(k string) bool {
-	for _, v := range c.include {
-		// first see if the specific file matches
-		if v == k {
-			return true
-		}
-
-		// then see if the extension matches
-		_, _, ext, _ := getFileParts(k)
-		if v == ext {
+	logger.Infof("%s c.IncludeAnchored %s", k, c.IncludeAnchored)
+	if c.IncludeAnchored != "" {
+		logger.Info(filepath.Base(k))
+		if strings.HasPrefix(filepath.Base(k), c.IncludeAnchored) {
+			logger.Info("has prefix")
 			return true
 		}
 	}
 
 	return false	
 }
+
 
 func (c *Car) excludeFile(k string) bool {
-	for _, v := range c.exclude {
-		// first see if the specific file matches
-		if v == k {
-			return true
-		}
-
-		// then see if the extension matches
-		_, _, ext, _ := getFileParts(k)
-		if v == ext {
+	logger.Infof("%s c.ExcludeAnchored %s", k, c.ExcludeAnchored)
+	if c.ExcludeAnchored != "" {
+		logger.Info(filepath.Base(k))
+		if strings.HasPrefix(filepath.Base(k), c.ExcludeAnchored) {
+			logger.Info("has prefix")
 			return true
 		}
 	}
 
 	return false	
-
 }
+
 
 func ParseFormat(s string) (Format, error) {
 	switch s {

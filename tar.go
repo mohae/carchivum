@@ -170,13 +170,27 @@ func (t *Tar) Write() (*sync.WaitGroup, error) {
 
 			header.Name = f.Name()
 
+			// See if any header overrides need to be done
+			if t.Owner > 0 {
+				header.Uid = t.Owner
+			}
+
+			if t.Group > 0 {
+				header.Gid = t.Group
+			}
+
+			if t.Mode > 0 {
+				header.Mode = int64(t.Mode)
+			}
+
+			logger.Debugf("%+v", header)
+
 			err = t.writer.WriteHeader(header)
 			if err != nil {
 				logger.Error(err)
 				return err
 			}
 	
-			
 			io.Copy(t.writer, f)
 			if err != nil {
 				logger.Error(err)
