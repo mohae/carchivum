@@ -301,6 +301,16 @@ func (c *Car) includeFile(k string) bool {
 		}
 	}
 
+	if c.IncludeExtCount == 0 {
+		return false
+	}
+
+	for _, ext := range c.IncludeExt {
+		if strings.HasSuffix(filepath.Base(k), "." + ext) {
+			return true
+		}
+	}
+
 	return false	
 }
 
