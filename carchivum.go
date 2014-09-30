@@ -203,6 +203,10 @@ type Car struct {
 	IncludeExtCount int
 	IncludeAnchored string
 
+	Newer
+	NewerMTime
+	NewerFile
+
 	// Processing queue
 	FileCh	chan *os.File
 
@@ -239,22 +243,7 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 		return nil
 	}
 
-	if strings.HasSuffix(root, p) {
-		logger.Debugf("%s | %s, don't add if source is the source directory", root, p)
-		return nil
-	}
-
-
-	b := c.includeFile(p)
-	if !b {
-		logger.Debugf("don't include %q", p)
-		return nil
-	}
-
-
-	b = c.excludeFile(p)
-	if b {
-		logger.Debugf("exclude %q", p)
+	if !c.addFile(root, p) {
 		return nil
 	}
 
@@ -290,6 +279,27 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 	return nil
 }
 
+func (c *Car) addFile(root, p string) bool {
+	if strings.HasSuffix(root, p) {
+		logger.Debugf("%s | %s, don't add if source is the source directory", root, p)
+		return false
+	}
+
+	b := c.includeFile(p)
+	if !b {
+		logger.Debugf("don't include %q", p)
+		return false
+	}
+
+
+	b = c.excludeFile(p)
+	if b {
+		logger.Debugf("exclude %q", p)
+		return false
+	}
+
+	
+}
 
 func (c *Car) includeFile(k string) bool {
 	logger.Infof("%s c.IncludeAnchored %s", k, c.IncludeAnchored)
