@@ -321,16 +321,6 @@ func (c *Car) includeFile(root, p string) (bool, error) {
 		}
 	}
 
-	if c.IncludeExtCount == 0 {
-		return false, nil
-	}
-
-	for _, ext := range c.IncludeExt {
-		if strings.HasSuffix(filepath.Base(p), "." + ext) {
-			return true, nil
-		}
-	}
-
 	// since we are just evaluating a file, we use match and look at the
 	// fullpath
 	if c.Include != "" {
@@ -340,6 +330,16 @@ func (c *Car) includeFile(root, p string) (bool, error) {
 		}
 
 		if matches {
+			return true, nil
+		}
+	}
+
+	if c.IncludeExtCount == 0 {
+		return false, nil
+	}
+
+	for _, ext := range c.IncludeExt {
+		if strings.HasSuffix(filepath.Base(p), "." + ext) {
 			return true, nil
 		}
 	}
