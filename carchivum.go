@@ -240,18 +240,22 @@ func (c *Car) Message() string {
 // addFile  reads a file and pipes it to the zipper goroutine.
 func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 	logger.Debugf("root: %s, p: %s, fi.Name: %s", root, p, fi.Name())
-	// Don't add symlinks, otherwise would have to code some cycle
-	// detection amongst other stuff.
-	if fi.Mode() & os.ModeSymlink == os.ModeSymlink {
-		logger.Debugf("don't follow symlinks: %q", p)
-		return nil
-	}
 
-	add, err := c.addFile(root, p)
+	// Check fileInfo to see if this should be added to archive
+	process, err := c.filterFileInfo(fi)	
 	if err != nil {
 		return err
 	}
-	if !add {
+	if !process {
+		return nil
+	}
+
+	// Check path information to see if this should be added to archive
+	process, err = c.filterPaths(root, p)
+	if err != nil {
+		return err
+	}
+	if !process {
 		return nil
 	}
 
@@ -287,7 +291,17 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 	return nil
 }
 
-func (c *Car) addFile(root, p string) (bool, error) {
+func (c *Car) filterFileInfo(fi os.FileInfo) (bool, error) {
+	// Don't add symlinks, otherwise would have to code some cycle
+	// detection amongst other stuff.
+	if fi.Mode() & os.ModeSymlink == os.ModeSymlink {
+		logger.Debugf("don't follow symlinks: %q", p)
+		return nil
+	}
+
+}
+
+func (c *Car) filterPath(root, p string) (bool, error) {
 	if strings.HasSuffix(root, p) {
 		logger.Debugf("%s | %s, don't add if source is the source directory", root, p)
 		return false, nil
@@ -344,6 +358,11 @@ func (c *Car) includeFile(root, p string) (bool, error) {
 				return true, nil
 			}
 		}
+	}
+
+	// time processing falls under include
+	if c.NewerMTime != "" {
+		
 	}
 
 	return false, nil
