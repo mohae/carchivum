@@ -203,9 +203,9 @@ type Car struct {
 	IncludeExtCount int
 	IncludeAnchored string
 
-	Newer
-	NewerMTime
-	NewerFile
+	Newer string
+	NewerMTime string
+	NewerFile string
 
 	// Processing queue
 	FileCh	chan *os.File
@@ -243,7 +243,11 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 		return nil
 	}
 
-	if !c.addFile(root, p) {
+	add, err := c.addFile(root, p)
+	if err != nil {
+		return err
+	}
+	if !add {
 		return nil
 	}
 
@@ -279,49 +283,65 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 	return nil
 }
 
-func (c *Car) addFile(root, p string) bool {
+func (c *Car) addFile(root, p string) (bool, error) {
 	if strings.HasSuffix(root, p) {
 		logger.Debugf("%s | %s, don't add if source is the source directory", root, p)
-		return false
+		return false, nil
 	}
 
-	b := c.includeFile(p)
+	b, err := c.includeFile(root, p)
+	if err != nil {
+		return false, err
+	}
 	if !b {
 		logger.Debugf("don't include %q", p)
-		return false
+		return false, nil
 	}
 
 
 	b = c.excludeFile(p)
 	if b {
 		logger.Debugf("exclude %q", p)
-		return false
+		return false, nil
 	}
 
-	
+	return true, nil
 }
 
-func (c *Car) includeFile(k string) bool {
-	logger.Infof("%s c.IncludeAnchored %s", k, c.IncludeAnchored)
+func (c *Car) includeFile(root, p string) (bool, error) {
+	logger.Infof("%sroot: %s c.IncludeAnchored %s", root, p, c.IncludeAnchored)
 	if c.IncludeAnchored != "" {
-		logger.Info(filepath.Base(k))
-		if strings.HasPrefix(filepath.Base(k), c.IncludeAnchored) {
+		logger.Info(filepath.Base(p))
+		if strings.HasPrefix(filepath.Base(c.IncludeAnchored), p) {
 			logger.Info("has prefix")
-			return true
+			return true, nil
 		}
 	}
 
 	if c.IncludeExtCount == 0 {
-		return false
+		return false, nil
 	}
 
 	for _, ext := range c.IncludeExt {
-		if strings.HasSuffix(filepath.Base(k), "." + ext) {
-			return true
+		if strings.HasSuffix(filepath.Base(p), "." + ext) {
+			return true, nil
 		}
 	}
 
-	return false	
+	// since we are just evaluating a file, we use match and look at the
+	// fullpath
+	if c.Include != "" {
+		matches, err := filepath.Match(c.Include, filepath.Join(root, p))
+		if err != nil {
+			return false, err
+		}
+
+		if matches {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 
