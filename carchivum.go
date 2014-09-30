@@ -195,10 +195,12 @@ type Car struct {
 
 	Exclude string
 	ExcludeExt []string
+	ExcludeExtCount int
 	ExcludeAnchored string
 
 	Include string
 	IncludeExt []string
+	IncludeExtCount int
 	IncludeAnchored string
 
 	// Processing queue
@@ -250,7 +252,7 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 	}
 
 
-	b := c.excludeFile(p)
+	b = c.excludeFile(p)
 	if b {
 		logger.Debugf("exclude %q", p)
 		return nil
@@ -309,6 +311,16 @@ func (c *Car) excludeFile(k string) bool {
 		logger.Info(filepath.Base(k))
 		if strings.HasPrefix(filepath.Base(k), c.ExcludeAnchored) {
 			logger.Info("has prefix")
+			return true
+		}
+	}
+
+	if c.ExcludeExtCount == 0 {
+		return false
+	}
+
+	for _, ext := range c.ExcludeExt {
+		if strings.HasSuffix(filepath.Base(k), "." + ext) {
 			return true
 		}
 	}
