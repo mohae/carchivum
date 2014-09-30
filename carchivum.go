@@ -299,7 +299,10 @@ func (c *Car) addFile(root, p string) (bool, error) {
 	}
 
 
-	b = c.excludeFile(p)
+	b, err = c.excludeFile(root, p)
+	if err != nil {
+		return false, err
+	}
 	if b {
 		logger.Debugf("exclude %q", p)
 		return false, nil
@@ -345,27 +348,37 @@ func (c *Car) includeFile(root, p string) (bool, error) {
 }
 
 
-func (c *Car) excludeFile(k string) bool {
-	logger.Infof("%s c.ExcludeAnchored %s", k, c.ExcludeAnchored)
+func (c *Car) excludeFile(root, p string) (bool, error) {
+	logger.Infof("%s c.ExcludeAnchored %s", p, c.ExcludeAnchored)
 	if c.ExcludeAnchored != "" {
-		logger.Info(filepath.Base(k))
-		if strings.HasPrefix(filepath.Base(k), c.ExcludeAnchored) {
+		logger.Info(filepath.Base(p))
+		if strings.HasPrefix(filepath.Base(p), c.ExcludeAnchored) {
 			logger.Info("has prefix")
-			return true
+			return true, nil
 		}
 	}
 
-	if c.ExcludeExtCount == 0 {
-		return false
+	// since we are just evaluating a file, we use match and look at the
+	// fullpath
+	if c.Exclude != "" {
+		matches, err := filepath.Match(c.Exclude, filepath.Join(root, p))
+		if err != nil {
+			return false, err
+		}
+
+		if matches {
+			return true, nil
+		}
 	}
 
 	for _, ext := range c.ExcludeExt {
-		if strings.HasSuffix(filepath.Base(k), "." + ext) {
-			return true
+		if strings.HasSuffix(filepath.Base(p), "." + ext) {
+			return true, nil
 		}
 	}
 
-	return false	
+
+	return false, nil
 }
 
 
