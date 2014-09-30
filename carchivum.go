@@ -191,13 +191,17 @@ type Car struct {
 
 
 	// Local file selection
+	// List of files to delete if applicable.
+	Delete []string
 	DeleteFiles bool
 
+	// Exclude file processing
 	Exclude string
 	ExcludeExt []string
 	ExcludeExtCount int
 	ExcludeAnchored string
 
+	// Include file processing
 	Include string
 	IncludeExt []string
 	IncludeExtCount int
@@ -334,13 +338,11 @@ func (c *Car) includeFile(root, p string) (bool, error) {
 		}
 	}
 
-	if c.IncludeExtCount == 0 {
-		return false, nil
-	}
-
-	for _, ext := range c.IncludeExt {
-		if strings.HasSuffix(filepath.Base(p), "." + ext) {
-			return true, nil
+	if c.IncludeExtCount != 0 {
+		for _, ext := range c.IncludeExt {
+			if strings.HasSuffix(filepath.Base(p), "." + ext) {
+				return true, nil
+			}
 		}
 	}
 
@@ -371,9 +373,11 @@ func (c *Car) excludeFile(root, p string) (bool, error) {
 		}
 	}
 
-	for _, ext := range c.ExcludeExt {
-		if strings.HasSuffix(filepath.Base(p), "." + ext) {
-			return true, nil
+	if c.ExcludeExtCount != 0 {
+		for _, ext := range c.ExcludeExt {
+			if strings.HasSuffix(filepath.Base(p), "." + ext) {
+				return true, nil
+			}
 		}
 	}
 
