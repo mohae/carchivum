@@ -66,8 +66,28 @@ func (t *Tar) CreateFile(destination string, sources ...string) (cnt int, err er
 		}
 	}
 
+	if t.DeleteArchived {
+		err := t.removeFiles()
+		if err != nil {
+			err = fmt.Errorf( "an error was encountered while deleting the archived files; some files may not be deleted: %q", err)
+			logger.Error(err)
+			return 0, err
+		}
+	}
+
 	t.setDelta()
 	return 0, nil
+}
+
+func (t *Tar) removeFiles() error {
+	for _, file := range t.deleteList {
+		err := os.Remove(file)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+	}
+	return nil
 }
 
 func (t *Tar) Delete() error {

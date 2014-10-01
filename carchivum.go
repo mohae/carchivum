@@ -38,6 +38,7 @@ const (
 	FmtRAROld
 )
 
+var unsetTime time.Time
 
 // Header information for common archive/compression formats.
 // Zip includes: zip, jar, odt, ods, odp, docx, xlsx, pptx, apx, odf, ooxml
@@ -160,9 +161,9 @@ func (f Format) NotSupportedError() error {
 var defaultFormat Format = FmtGzip
 
 // Options
-var AppendDate bool
-var TimeFormat string = time.RFC3339
-var UseNano bool
+//var AppendDate bool
+//var o utputNameTimeFormat string = time.RFC3339
+//var UseNano bool
 var Separator string = "-"
 var MakeUnique bool = false
 // default max random number for random number generation.
@@ -177,6 +178,13 @@ var CPUMultiplier int = 4
 // Car is a Compressed Archive. The struct holds information about Cars and
 // their processing.
 type Car struct {
+	
+	// This lock structure is  not used for walk/file channel related
+	// things. As this structure's use was expanded from statistics
+	// tracking to providing access to delete structures, its usage and
+	// coverage isn't as good as it should be, but it is improving.
+	lock sync.Mutex
+
 	// Name of the archive, this includes path information, if any.
 	Name string
 	UseLongExt bool
@@ -192,8 +200,8 @@ type Car struct {
 
 	// Local file selection
 	// List of files to delete if applicable.
-	Delete []string
-	DeleteFiles bool
+	deleteList []string
+	DeleteArchived bool
 
 	// Exclude file processing
 	Exclude string
@@ -207,15 +215,19 @@ type Car struct {
 	IncludeExtCount int
 	IncludeAnchored string
 
+	// File time format handling
 	Newer string
-	NewerMTime string
+	NewerMTime time.Time
 	NewerFile string
+//	TimeFormats []string
+
+	// Output format for time
+	outputNameTimeFormat string
 
 	// Processing queue
 	FileCh	chan *os.File
 
 	// Other Counters
-	counterLock sync.Mutex
 	files int32
 	bytes int64
 	compressedBytes int64
@@ -251,7 +263,7 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 	}
 
 	// Check path information to see if this should be added to archive
-	process, err = c.filterPaths(root, p)
+	process, err = c.filterPath(root, p)
 	if err != nil {
 		return err
 	}
@@ -271,6 +283,7 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 		return nil
 	}
 
+	fullpath := p
 	if !c.UseFullpath {
 		p = filepath.Join(filepath.Base(root), relPath)
 	} 
@@ -281,13 +294,18 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 		return err
 	}
 
-	c.counterLock.Lock()
+	c.lock.Lock()
 	c.files++
 	c.bytes += fi.Size()
-	c.counterLock.Unlock()
+
+	if c.DeleteArchived {
+		c.deleteList = append(c.deleteList, fullpath)
+	}
 
 	c.FileCh <- f
+	c.lock.Unlock()
 
+	logger.Debugf("add to delete: %s" ,fullpath)
 	return nil
 }
 
@@ -295,10 +313,18 @@ func (c *Car) filterFileInfo(fi os.FileInfo) (bool, error) {
 	// Don't add symlinks, otherwise would have to code some cycle
 	// detection amongst other stuff.
 	if fi.Mode() & os.ModeSymlink == os.ModeSymlink {
-		logger.Debugf("don't follow symlinks: %q", p)
-		return nil
+		logger.Debugf("don't follow symlinks: %q", fi.Name())
+		return false, nil
 	}
 
+	logger.Infof("mtime: %v", c.NewerMTime)
+	if c.NewerMTime != unsetTime {
+		if !fi.ModTime().After(c.NewerMTime) {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
 
 func (c *Car) filterPath(root, p string) (bool, error) {
@@ -360,11 +386,6 @@ func (c *Car) includeFile(root, p string) (bool, error) {
 		}
 	}
 
-	// time processing falls under include
-	if c.NewerMTime != "" {
-		
-	}
-
 	return false, nil
 }
 
@@ -418,9 +439,10 @@ func ParseFormat(s string) (Format, error) {
 	return FmtUnsupported, FmtUnsupported.NotSupportedError()
 }
 
-func formattedNow() string {
-	return time.Now().Local().Format(TimeFormat)
-}
+
+//func formattedNow() string {
+//	return time.Now().Local().Format()
+//}
 
 func getFileParts(s string) (dir, file, ext string, err error) {
 	// see if there is path involved, if there is, get the last part of it
