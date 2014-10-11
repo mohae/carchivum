@@ -318,6 +318,7 @@ func (c *Car) filterFileInfo(fi os.FileInfo) (bool, error) {
 	}
 
 	logger.Infof("mtime: %v", c.NewerMTime)
+	logger.Infof("modtime: %v", fi.ModTime())
 	if c.NewerMTime != unsetTime {
 		if !fi.ModTime().After(c.NewerMTime) {
 			return false, nil
@@ -368,6 +369,7 @@ func (c *Car) includeFile(root, p string) (bool, error) {
 	// since we are just evaluating a file, we use match and look at the
 	// fullpath
 	if c.Include != "" {
+		logger.Debugf("c.Include: %s", c.Include)
 		matches, err := filepath.Match(c.Include, filepath.Join(root, p))
 		if err != nil {
 			return false, err
@@ -378,15 +380,17 @@ func (c *Car) includeFile(root, p string) (bool, error) {
 		}
 	}
 
-	if c.IncludeExtCount != 0 {
+	if c.IncludeExtCount > 0 {
+		logger.Debugf("IncludeExt %d: %v", c.IncludeExtCount, c.IncludeExt)
 		for _, ext := range c.IncludeExt {
 			if strings.HasSuffix(filepath.Base(p), "." + ext) {
 				return true, nil
 			}
 		}
+		return false, nil
 	}
 
-	return false, nil
+	return true, nil
 }
 
 
