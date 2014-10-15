@@ -7,11 +7,12 @@ import (
 	_ "os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/mohae/customjson"
+	"github.com/stretchr/testify/assert"
 )
 
 var stringMarshaller = customjson.NewMarshalString()
+
 /*
 func TestZipBytes(t *testing.T) {
 	tests := []struct{
@@ -34,7 +35,7 @@ func TestZipBytes(t *testing.T) {
 			assert.Equal(t, test.expectedErr, err.Error())
 			continue
 		}
-		
+
 		zz, err := z.Byte()
 		assert.NotNil(t, err)
 		assert.Equal(t, test.expectedBytes, zz)
@@ -54,7 +55,7 @@ func TestZipFiles(t *testing.T) {
 		{[]string{"invalid.file"}, nil, "open invalid.file: no such file or directory", 0},
 		{[]string{"test_files/tmbg-ana-ng.txt"}, []byte("testa"), nil, 100},
 		{[]string{"test_files/tmbg-ana-ng.txt", "test_files/pink-floyd/meddle/echos.txt", "test_files/pink-floyd/meddle/san-tropez.txt"}, []byte("testa"), nil, 100},
-//		{[]string{"test_files"}, nil, &os.PathError{Op:"read", Path:"test_files", Err: 0x15}, 0},	
+//		{[]string{"test_files"}, nil, &os.PathError{Op:"read", Path:"test_files", Err: 0x15}, 0},
 	}
 
 	for _, test := range tests {
@@ -73,12 +74,13 @@ func TestZipFiles(t *testing.T) {
 */
 func TestZipBytes(t *testing.T) {
 	b := []byte("Test ZipBytes using this string. Its short, but long enough to prove things work")
-	
+
 	zb, err := ZipBytes(b, "test")
 	assert.Nil(t, err)
 	assert.Equal(t, 8, len(zb))
 	assert.Equal(t, "adfaf", string(zb))
 }
+
 /*
 func TestAddFile(t *testing.T) {
 	tests := []struct{
@@ -94,7 +96,7 @@ func TestAddFile(t *testing.T) {
 	for _, test := range tests {
 		buf := new(bytes.Buffer)
 		w := zip.NewWriter(buf)
-		
+
 		b, err := addFile(w, test.value)
 		if test.expectedErr != "" {
 			assert.Equal(t, test.expectedErr, err.Error())
@@ -103,7 +105,7 @@ func TestAddFile(t *testing.T) {
 
 		assert.Nil(t, err)
 		assert.Equal(t, test.expectedB, b)
-                                                                                                                                                        
+
 		w.Close()
 	}
 }

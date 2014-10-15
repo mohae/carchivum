@@ -9,13 +9,13 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
-	
+
 	"github.com/MichaelTJones/walk"
 )
 
 type Zip struct {
 	Car
-	writer *zip.Writer
+	writer  *zip.Writer
 	fwriter *os.File
 }
 
@@ -43,7 +43,7 @@ func (z *Zip) CreateFile(destination string, sources ...string) (cnt int, err er
 	}
 
 	// See if we can create the destination file before processing
-	z.fwriter, err = os.OpenFile(destination, os.O_RDWR | os.O_CREATE, 0666)
+	z.fwriter, err = os.OpenFile(destination, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		logger.Error(err)
 		return 0, err
@@ -66,7 +66,7 @@ func (z *Zip) CreateFile(destination string, sources ...string) (cnt int, err er
 	var fullPath string
 	// Walk the sources, add each file to the queue.
 	// This isn't limited as a large number of sources is not expected.
-	// 
+	//
 	visitor := func(p string, fi os.FileInfo, err error) error {
 		return z.AddFile(fullPath, p, fi, err)
 	}
@@ -75,7 +75,7 @@ func (z *Zip) CreateFile(destination string, sources ...string) (cnt int, err er
 	wg.Add(len(sources) - 1)
 	for _, source := range sources {
 		logger.Debug(source)
-		// first get the absolute, its needed either way		
+		// first get the absolute, its needed either way
 		fullPath, err = filepath.Abs(source)
 		if err != nil {
 			logger.Error(err)
@@ -86,7 +86,7 @@ func (z *Zip) CreateFile(destination string, sources ...string) (cnt int, err er
 		if err != nil {
 			logger.Error(err)
 			return 0, err
-		}	
+		}
 	}
 
 	logger.Debug("wg wait")
@@ -145,15 +145,15 @@ func copyTo(w io.Writer, z *zip.File) (int64, error) {
 	}
 	defer f.Close()
 
-	return io.Copy(w, f) 
+	return io.Copy(w, f)
 }
 
-// 
+//
 // Because zip can't be parallized because  `Create/CreateHEader` implicitly
 // closes the writer and I don't feel like writing a parallized zip writer,
 // we spawn a new goroutine for each file to read and pipe them to the zipper
 // goroutine.
-// 
+//
 // SEE where to add defer
 func (z *Zip) Write() (*sync.WaitGroup, error) {
 	logger.Debug("Write channel...")
@@ -171,7 +171,7 @@ func (z *Zip) Write() (*sync.WaitGroup, error) {
 				return err
 			}
 
-			if info.IsDir()  {
+			if info.IsDir() {
 				continue
 			}
 

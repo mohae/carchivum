@@ -16,8 +16,8 @@ import (
 
 type Tar struct {
 	Car
-	writer *tar.Writer
-	format	Format
+	writer  *tar.Writer
+	format  Format
 	sources []string
 }
 
@@ -44,7 +44,7 @@ func (t *Tar) CreateFile(destination string, sources ...string) (cnt int, err er
 
 	t.sources = sources
 	// See if we can create the destination file before processing
-	tball, err := os.OpenFile(destination, os.O_RDWR | os.O_CREATE, 0666)
+	tball, err := os.OpenFile(destination, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		logger.Error(err)
 		return 0, err
@@ -69,7 +69,7 @@ func (t *Tar) CreateFile(destination string, sources ...string) (cnt int, err er
 	if t.DeleteArchived {
 		err := t.removeFiles()
 		if err != nil {
-			err = fmt.Errorf( "an error was encountered while deleting the archived files; some files may not be deleted: %q", err)
+			err = fmt.Errorf("an error was encountered while deleting the archived files; some files may not be deleted: %q", err)
 			logger.Error(err)
 			return 0, err
 		}
@@ -98,7 +98,7 @@ func (t *Tar) Extract() error {
 	return nil
 }
 
-func (t *Tar)  CreateGzip(w io.Writer) (err error) {
+func (t *Tar) CreateGzip(w io.Writer) (err error) {
 	gw := gzip.NewWriter(w)
 	// Close the file with error handling
 	defer func() {
@@ -113,7 +113,6 @@ func (t *Tar)  CreateGzip(w io.Writer) (err error) {
 	err = t.writeTar(gw)
 	return err
 }
-
 
 func (t *Tar) writeTar(w io.Writer) (err error) {
 	t.writer = tar.NewWriter(w)
@@ -141,7 +140,7 @@ func (t *Tar) writeTar(w io.Writer) (err error) {
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(len(t.sources) -1)
+	wg.Add(len(t.sources) - 1)
 	for _, source := range t.sources {
 		logger.Debug(source)
 
@@ -157,14 +156,14 @@ func (t *Tar) writeTar(w io.Writer) (err error) {
 			return err
 		}
 	}
-	
+
 	logger.Debug("wg wait")
 	wg.Wait()
 	close(t.FileCh)
 	wait.Wait()
 
 	return err
-	
+
 }
 
 func (t *Tar) Write() (*sync.WaitGroup, error) {
@@ -210,13 +209,13 @@ func (t *Tar) Write() (*sync.WaitGroup, error) {
 				logger.Error(err)
 				return err
 			}
-	
+
 			io.Copy(t.writer, f)
 			if err != nil {
 				logger.Error(err)
 				return err
 			}
-		
+
 			err = f.Close()
 			if err != nil {
 				logger.Error(err)

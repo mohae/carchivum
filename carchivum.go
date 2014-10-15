@@ -43,22 +43,22 @@ var unsetTime time.Time
 // Header information for common archive/compression formats.
 // Zip includes: zip, jar, odt, ods, odp, docx, xlsx, pptx, apx, odf, ooxml
 var (
-	headerGzip []byte = []byte{0x1f, 0x8b}
-	headerTar1 []byte = []byte{0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x30, 0x30} // offset: 257
-	headerTar2 []byte = []byte{0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x20, 0x00} // offset: 257
-	headerZip []byte = []byte{0x50, 0x4b, 0x03, 0x04}
-	headerZipEmpty []byte = []byte{0x50, 0x4b, 0x05, 0x06}
+	headerGzip       []byte = []byte{0x1f, 0x8b}
+	headerTar1       []byte = []byte{0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x30, 0x30} // offset: 257
+	headerTar2       []byte = []byte{0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x20, 0x00} // offset: 257
+	headerZip        []byte = []byte{0x50, 0x4b, 0x03, 0x04}
+	headerZipEmpty   []byte = []byte{0x50, 0x4b, 0x05, 0x06}
 	headerZipSpanned []byte = []byte{0x50, 0x4b, 0x07, 0x08}
-	headerBzip2 []byte = []byte{0x42, 0x5a, 0x68}
-	headerLZH []byte = []byte{0x1F, 0xa0}
-	headerLZW []byte = []byte{0x1F, 0x9d}
-	headerRAR []byte = []byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x01, 0x00}
-	headerRAROld []byte = []byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00}
+	headerBzip2      []byte = []byte{0x42, 0x5a, 0x68}
+	headerLZH        []byte = []byte{0x1F, 0xa0}
+	headerLZW        []byte = []byte{0x1F, 0x9d}
+	headerRAR        []byte = []byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x01, 0x00}
+	headerRAROld     []byte = []byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00}
 )
 
 func GetFileFormat(r io.ReaderAt) (Format, error) {
 	h := make([]byte, 8, 8)
-	
+
 	r.ReadAt(h, 0)
 
 	if bytes.Equal(headerGzip, h[0:2]) {
@@ -94,15 +94,15 @@ func GetFileFormat(r io.ReaderAt) (Format, error) {
 
 	if bytes.Equal(headerBzip2, h[0:3]) {
 		return FmtUnsupported, FmtBzip2.NotSupportedError()
-	}	
+	}
 
 	if bytes.Equal(headerLZW, h[0:2]) {
 		return FmtUnsupported, FmtLZW.NotSupportedError()
-	}	
+	}
 
 	if bytes.Equal(headerLZH, h[0:2]) {
 		return FmtUnsupported, FmtLZH.NotSupportedError()
-	}	
+	}
 
 	return FmtUnsupported, FmtUnsupported.NotSupportedError()
 }
@@ -132,18 +132,18 @@ func (f Format) ToString() string {
 	case FmtRAR:
 		return "RAR post 5.0"
 	case FmtRAROld:
-		return  "RAR pre 1.5"
+		return "RAR pre 1.5"
 	}
 	return "unsupported"
 }
-	
+
 func (f Format) NotSupportedError() error {
 	switch f {
 	case FmtZipEmpty:
 		return fmt.Errorf("empty zip archive is not supported")
 	case FmtZipSpanned:
 		return fmt.Errorf("spanned zip archive is not supported")
-	case FmtBzip2 :
+	case FmtBzip2:
 		return fmt.Errorf("bzip2 is not supported")
 	case FmtLZH:
 		return fmt.Errorf("LZH is not supported")
@@ -156,7 +156,6 @@ func (f Format) NotSupportedError() error {
 	}
 	return fmt.Errorf("unsupported format error, more specific information unavailable")
 }
-	
 
 var defaultFormat Format = FmtGzip
 
@@ -166,6 +165,7 @@ var defaultFormat Format = FmtGzip
 //var UseNano bool
 var Separator string = "-"
 var MakeUnique bool = false
+
 // default max random number for random number generation.
 var MaxRand = 10000
 
@@ -178,7 +178,7 @@ var CPUMultiplier int = 4
 // Car is a Compressed Archive. The struct holds information about Cars and
 // their processing.
 type Car struct {
-	
+
 	// This lock structure is  not used for walk/file channel related
 	// things. As this structure's use was expanded from statistics
 	// tracking to providing access to delete structures, its usage and
@@ -186,52 +186,51 @@ type Car struct {
 	lock sync.Mutex
 
 	// Name of the archive, this includes path information, if any.
-	Name string
-	UseLongExt bool
+	Name        string
+	UseLongExt  bool
 	UseFullpath bool
 
 	// Create operation modifiers
 	Owner int
 	Group int
-	Mode os.FileMode
+	Mode  os.FileMode
 
 	// Extract operation modifiers
 
-
 	// Local file selection
 	// List of files to delete if applicable.
-	deleteList []string
+	deleteList     []string
 	DeleteArchived bool
 
 	// Exclude file processing
-	Exclude string
-	ExcludeExt []string
+	Exclude         string
+	ExcludeExt      []string
 	ExcludeExtCount int
 	ExcludeAnchored string
 
 	// Include file processing
-	Include string
-	IncludeExt []string
+	Include         string
+	IncludeExt      []string
 	IncludeExtCount int
 	IncludeAnchored string
 
 	// File time format handling
-	Newer string
+	Newer      string
 	NewerMTime time.Time
-	NewerFile string
-//	TimeFormats []string
+	NewerFile  string
+	//	TimeFormats []string
 
 	// Output format for time
 	outputNameTimeFormat string
 
 	// Processing queue
-	FileCh	chan *os.File
+	FileCh chan *os.File
 
 	// Other Counters
-	files int32
-	bytes int64
+	files           int32
+	bytes           int64
 	compressedBytes int64
-	
+
 	// timer
 	t0 time.Time
 	𝛥t float64
@@ -254,7 +253,7 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 	logger.Debugf("root: %s, p: %s, fi.Name: %s", root, p, fi.Name())
 
 	// Check fileInfo to see if this should be added to archive
-	process, err := c.filterFileInfo(fi)	
+	process, err := c.filterFileInfo(fi)
 	if err != nil {
 		return err
 	}
@@ -286,8 +285,8 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 	fullpath := p
 	if !c.UseFullpath {
 		p = filepath.Join(filepath.Base(root), relPath)
-	} 
-	
+	}
+
 	f, err := os.Open(p)
 	if err != nil {
 		logger.Error(err)
@@ -305,14 +304,14 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 	c.FileCh <- f
 	c.lock.Unlock()
 
-	logger.Debugf("add to delete: %s" ,fullpath)
+	logger.Debugf("add to delete: %s", fullpath)
 	return nil
 }
 
 func (c *Car) filterFileInfo(fi os.FileInfo) (bool, error) {
 	// Don't add symlinks, otherwise would have to code some cycle
 	// detection amongst other stuff.
-	if fi.Mode() & os.ModeSymlink == os.ModeSymlink {
+	if fi.Mode()&os.ModeSymlink == os.ModeSymlink {
 		logger.Debugf("don't follow symlinks: %q", fi.Name())
 		return false, nil
 	}
@@ -342,7 +341,6 @@ func (c *Car) filterPath(root, p string) (bool, error) {
 		logger.Debugf("don't include %q", p)
 		return false, nil
 	}
-
 
 	b, err = c.excludeFile(root, p)
 	if err != nil {
@@ -383,7 +381,7 @@ func (c *Car) includeFile(root, p string) (bool, error) {
 	if c.IncludeExtCount > 0 {
 		logger.Debugf("IncludeExt %d: %v", c.IncludeExtCount, c.IncludeExt)
 		for _, ext := range c.IncludeExt {
-			if strings.HasSuffix(filepath.Base(p), "." + ext) {
+			if strings.HasSuffix(filepath.Base(p), "."+ext) {
 				return true, nil
 			}
 		}
@@ -392,7 +390,6 @@ func (c *Car) includeFile(root, p string) (bool, error) {
 
 	return true, nil
 }
-
 
 func (c *Car) excludeFile(root, p string) (bool, error) {
 	logger.Infof("%s c.ExcludeAnchored %s", p, c.ExcludeAnchored)
@@ -419,16 +416,14 @@ func (c *Car) excludeFile(root, p string) (bool, error) {
 
 	if c.ExcludeExtCount != 0 {
 		for _, ext := range c.ExcludeExt {
-			if strings.HasSuffix(filepath.Base(p), "." + ext) {
+			if strings.HasSuffix(filepath.Base(p), "."+ext) {
 				return true, nil
 			}
 		}
 	}
 
-
 	return false, nil
 }
-
 
 func ParseFormat(s string) (Format, error) {
 	switch s {
@@ -439,10 +434,9 @@ func ParseFormat(s string) (Format, error) {
 	case "zip":
 		return FmtZip, nil
 	}
-	
+
 	return FmtUnsupported, FmtUnsupported.NotSupportedError()
 }
-
 
 //func formattedNow() string {
 //	return time.Now().Local().Format()
@@ -450,7 +444,7 @@ func ParseFormat(s string) (Format, error) {
 
 func getFileParts(s string) (dir, file, ext string, err error) {
 	// see if there is path involved, if there is, get the last part of it
-	dir, filename := filepath.Split(s)	
+	dir, filename := filepath.Split(s)
 	parts := strings.Split(filename, ".")
 	l := len(parts)
 	switch l {
