@@ -25,26 +25,26 @@ func NewTar() *Tar {
 	return &Tar{Car: Car{t0: time.Now()}, format: defaultFormat, sources: []string{}}
 }
 
-func (t *Tar) CreateFile(destination string, sources ...string) (cnt int, err error) {
+func (t *Tar) CreateFile(dst string, src ...string) (cnt int, err error) {
 	logger.Debug("Create Tarfile")
 
 	// If there isn't a destination, return err
-	if destination == "" {
+	if dst == "" {
 		err = fmt.Errorf("destination required to create a tar archive")
 		logger.Error(err)
 		return 0, err
 	}
 
 	// If there aren't any sources, return err
-	if len(sources) == 0 {
+	if len(src) == 0 {
 		err = fmt.Errorf("a source is required to create a tar archive")
 		logger.Error(err)
 		return 0, err
 	}
 
-	t.sources = sources
+	t.sources = src
 	// See if we can create the destination file before processing
-	tball, err := os.OpenFile(destination, os.O_RDWR|os.O_CREATE, 0666)
+	tball, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		logger.Error(err)
 		return 0, err
@@ -94,10 +94,60 @@ func (t *Tar) Delete() error {
 	return nil
 }
 
-func (t *Tar) Extract() error {
+func (t *Tar) Extract(src io.Reader, dst string) error {
+	tr := tar.NewReader(src)
+
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break // break at eof
+		}
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+		if hdr.Name == "." {
+			continue // skip .
+		}
+		err = extractTarFile(hdr, dst, tr)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+	}
 	return nil
 }
 
+func extractTarFile(hdr *tar.Header, dst string, in io.Reader) error {
+	fP := filepath.Join(dst, hdr.Name)
+	fI := hdr.FileInfo()
+
+	err := os.MkdirAll(fP, fI.Mode())
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+	if fI.IsDir() {
+		return nil
+	}
+	if fI.Mode()&os.ModeSymlink != 0 {
+		return os.Symlink(hdr.Linkname, fP)
+	}
+
+	dF, err := os.OpenFile(fP, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fI.Mode())
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	_, err = io.Copy(dF, in)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
 func (t *Tar) CreateGzip(w io.Writer) (err error) {
 	gw := gzip.NewWriter(w)
 	// Close the file with error handling
