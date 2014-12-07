@@ -39,7 +39,7 @@ const (
 )
 
 var unsetTime time.Time
-var createDir bool
+var CreateDir bool
 
 // Header information for common archive/compression formats.
 // Zip includes: zip, jar, odt, ods, odp, docx, xlsx, pptx, apx, odf, ooxml
@@ -470,56 +470,4 @@ func getFileParts(s string) (dir, file, ext string, err error) {
 	err = fmt.Errorf("unable to determine destination filename and extension")
 	logger.Error(err)
 	return dir, file, ext, err
-}
-
-func Extract(src, dst string) (message string, err error) {
-	if src == "" {
-		return "", fmt.Errorf("expected source, none provided")
-	}
-
-	// Open file
-	srcF, err := os.Open(src)
-	if err != nil {
-		logger.Error(err)
-		return "", err
-	}
-	// Close the file with error handling
-	defer func() {
-		if cerr := srcF.Close(); cerr != nil && err == nil {
-			logger.Error(cerr)
-			err = cerr
-		}
-	}()
-
-	// set dst
-	if dst == "" && createDir {
-		// make the destination folder the same as the src name
-		_, f, _, err := getFileParts(src)
-		if err != nil {
-			logger.Error(err)
-			return "", err
-		}
-		dst = f
-	}
-
-	// Check format
-	format, err := GetFileFormat(srcF)
-
-	// Extract accordingly
-	switch format {
-	case FmtGzip:
-		return "not implemented", nil
-	case FmtZip:
-		return "not implemented", nil
-	case FmtTar:
-		return extractTar(srcF, dst)
-	default:
-		return "not implemented", nil
-	}
-
-	return fmt.Sprintf("%q extracted to %q", src, dst), nil
-}
-
-func extractTar(src io.Reader, dst string) (message string, err error) {
-	return "extractTar not implemented", nil
 }
