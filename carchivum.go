@@ -70,21 +70,15 @@ func GetFileFormat(r io.ReaderAt) (Format, error) {
 		return FmtZip, nil
 	}
 
-	r.ReadAt(h, 257)
-	if bytes.Equal(headerTar1, h) || bytes.Equal(headerTar2, h) {
-		return FmtTar, nil
-	}
-
 	// unsupported
-	if bytes.Equal(headerRAROld, h) {
+	if bytes.Equal(headerRAROld, h[0:7]) {
 		return FmtUnsupported, FmtRAROld.NotSupportedError()
 	}
 
-	if bytes.Equal(headerRAR, h) {
+	if bytes.Equal(headerRAR, h[0:8]) {
 		return FmtUnsupported, FmtRAR.NotSupportedError()
 	}
 
-	r.ReadAt(h, 0)
 	if bytes.Equal(headerZipEmpty, h[0:4]) {
 		return FmtUnsupported, FmtZipEmpty.NotSupportedError()
 	}
@@ -103,6 +97,11 @@ func GetFileFormat(r io.ReaderAt) (Format, error) {
 
 	if bytes.Equal(headerLZH, h[0:2]) {
 		return FmtUnsupported, FmtLZH.NotSupportedError()
+	}
+
+	r.ReadAt(h, 257)
+	if bytes.Equal(headerTar1, h) || bytes.Equal(headerTar2, h) {
+		return FmtTar, nil
 	}
 
 	return FmtUnsupported, FmtUnsupported.NotSupportedError()
@@ -139,23 +138,7 @@ func (f Format) String() string {
 }
 
 func (f Format) NotSupportedError() error {
-	switch f {
-	case FmtZipEmpty:
-		return fmt.Errorf("empty zip archive is not supported")
-	case FmtZipSpanned:
-		return fmt.Errorf("spanned zip archive is not supported")
-	case FmtBzip2:
-		return fmt.Errorf("bzip2 is not supported")
-	case FmtLZH:
-		return fmt.Errorf("LZH is not supported")
-	case FmtLZW:
-		return fmt.Errorf("LZW is not supported")
-	case FmtRAR:
-		return fmt.Errorf("RAR post 5.0 is not supported")
-	case FmtRAROld:
-		return fmt.Errorf("RAR pre 1.5 is not supported")
-	}
-	return fmt.Errorf("unsupported format error, more specific information unavailable")
+	return fmt.Errorf("%s not supported", f.String())
 }
 
 var defaultFormat Format = FmtGzip
