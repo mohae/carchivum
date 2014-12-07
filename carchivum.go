@@ -112,7 +112,7 @@ type (
 	Format int
 )
 
-func (f Format) ToString() string {
+func (f Format) String() string {
 	switch f {
 	case FmtGzip:
 		return "gzip"
