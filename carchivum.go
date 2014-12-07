@@ -426,31 +426,31 @@ func ParseFormat(s string) (Format, error) {
 //	return time.Now().Local().Format()
 //}
 
-func getFileParts(s string) (dir, file, ext string, err error) {
+func getFileParts(s string) (dir, filename, ext string, err error) {
 	// see if there is path involved, if there is, get the last part of it
-	dir, filename := filepath.Split(s)
-	parts := strings.Split(filename, ".")
+	dir, fname := filepath.Split(s)
+	parts := strings.Split(fname, ".")
 	l := len(parts)
 	switch l {
 	case 2:
-		file := parts[0]
+		filename := parts[0]
 		ext := parts[1]
-		return dir, file, ext, nil
+		return dir, filename, ext, nil
 	case 1:
-		file := parts[0]
-		return dir, file, ext, nil
+		filename := parts[0]
+		return dir, filename, ext, nil
 	case 0:
 		err := fmt.Errorf("no destination filename found in %s", s)
 		logger.Error(err)
-		return dir, file, ext, err
+		return dir, filename, ext, err
 	default:
 		// join all but the last parts together with a "."
-		file := strings.Join(parts[0:l-1], ".")
+		filename := strings.Join(parts[0:l-1], ".")
 		ext := parts[l-1]
-		return dir, file, ext, nil
+		return dir, filename, ext, nil
 	}
 
 	err = fmt.Errorf("unable to determine destination filename and extension")
 	logger.Error(err)
-	return dir, file, ext, err
+	return dir, filename, ext, err
 }

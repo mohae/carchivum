@@ -86,6 +86,62 @@ func TestGetFileFormat(t *testing.T) {
 
 }
 
+func TestParseFormat(t *testing.T) {
+	tests := []struct {
+		value       string
+		expected    Format
+		expectedErr string
+	}{
+		{"gzip", FmtGzip, ""},
+		{"tar.gz", FmtGzip, ""},
+		{"tgz", FmtGzip, ""},
+		{"tar", FmtTar, ""},
+		{"zip", FmtZip, ""},
+		{"z", FmtUnsupported, "unsupported not supported"},
+	}
+
+	for _, test := range tests {
+		f, err := ParseFormat(test.value)
+		if test.expectedErr != "" {
+			assert.Equal(t, test.expectedErr, err.Error())
+			assert.Equal(t, FmtUnsupported, f)
+			continue
+		}
+		assert.Nil(t, err)
+		assert.Equal(t, test.expected, f)
+	}
+}
+
+func TestGetFileParts(t *testing.T) {
+	tests := []struct {
+		value            string
+		expectedDir      string
+		expectedFilename string
+		expectedExt      string
+		expectedErr      string
+	}{
+		{"", "", "", "", ""},
+		{"test", "", "test", "", ""},
+		{"test.tar", "", "test", "tar", ""},
+		{"/dir/name/test.tar", "/dir/name/", "test", "tar", ""},
+		{"dir/name/test.tar", "dir/name/", "test", "tar", ""},
+		{"../dir/name/test.tar", "../dir/name/", "test", "tar", ""},
+	}
+
+	for _, test := range tests {
+		dir, fname, ext, err := getFileParts(test.value)
+		if test.expectedErr != "" {
+			assert.Equal(t, test.expectedErr, err.Error())
+			continue
+		}
+		assert.Nil(t, err)
+		assert.Equal(t, test.expectedDir, dir)
+		assert.Equal(t, test.expectedFilename, fname)
+		assert.Equal(t, test.expectedExt, ext)
+
+	}
+}
+
 /*
 func TestAddFile(t *testing.T) {
 	tests := []struct {
