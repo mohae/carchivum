@@ -1,4 +1,4 @@
-// creates compressed archives.
+// Package carchivum works with compressed archives.
 //
 // Go's `archive` package, supports `tar` and `zip`
 // Go's `compress` package supports: bzip2, flate, gzip, lzw, zlib
@@ -23,19 +23,19 @@ import (
 )
 
 const (
-	FmtUnsupported Format = iota
-	FmtGzip
-	FmtTar
-	FmtTar1
-	FmtTar2
-	FmtZip
-	FmtZipEmpty
-	FmtZipSpanned
-	FmtBzip2
-	FmtLZH
-	FmtLZW
-	FmtRAR
-	FmtRAROld
+	FmtUnsupported Format = iota // Not a supported format
+	FmtGzip                      // Gzip compression format; always a tar
+	FmtTar                       // Tar format; normally used
+	FmtTar1                      // Tar1 header format; normalizes to FmtTar
+	FmtTar2                      // Tar1 header format; normalizes to FmtTar
+	FmtZip                       // Zip archive
+	FmtZipEmpty                  // Empty Zip Archive
+	FmtZipSpanned                // Spanned Zip Archive
+	FmtBzip2                     // Bzip2 compression
+	FmtLZH                       // LZH compression
+	FmtLZW                       // LZW compression
+	FmtRAR                       // RAR 5.0 and later compression
+	FmtRAROld                    // Rar pre 1.5 compression
 )
 
 var unsetTime time.Time
@@ -44,17 +44,17 @@ var CreateDir bool
 // Header information for common archive/compression formats.
 // Zip includes: zip, jar, odt, ods, odp, docx, xlsx, pptx, apx, odf, ooxml
 var (
-	headerGzip       []byte = []byte{0x1f, 0x8b}
-	headerTar1       []byte = []byte{0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x30, 0x30} // offset: 257
-	headerTar2       []byte = []byte{0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x20, 0x00} // offset: 257
-	headerZip        []byte = []byte{0x50, 0x4b, 0x03, 0x04}
-	headerZipEmpty   []byte = []byte{0x50, 0x4b, 0x05, 0x06}
-	headerZipSpanned []byte = []byte{0x50, 0x4b, 0x07, 0x08}
-	headerBzip2      []byte = []byte{0x42, 0x5a, 0x68}
-	headerLZH        []byte = []byte{0x1F, 0xa0}
-	headerLZW        []byte = []byte{0x1F, 0x9d}
-	headerRAR        []byte = []byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x01, 0x00}
-	headerRAROld     []byte = []byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00}
+	headerGzip       = []byte{0x1f, 0x8b}
+	headerTar1       = []byte{0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x30, 0x30} // offset: 257
+	headerTar2       = []byte{0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x20, 0x00} // offset: 257
+	headerZip        = []byte{0x50, 0x4b, 0x03, 0x04}
+	headerZipEmpty   = []byte{0x50, 0x4b, 0x05, 0x06}
+	headerZipSpanned = []byte{0x50, 0x4b, 0x07, 0x08}
+	headerBzip2      = []byte{0x42, 0x5a, 0x68}
+	headerLZH        = []byte{0x1F, 0xa0}
+	headerLZW        = []byte{0x1F, 0x9d}
+	headerRAR        = []byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x01, 0x00}
+	headerRAROld     = []byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00}
 )
 
 func GetFileFormat(r io.ReaderAt) (Format, error) {
