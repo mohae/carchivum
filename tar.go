@@ -25,7 +25,7 @@ func NewTar() *Tar {
 	return &Tar{Car: Car{t0: time.Now()}, format: defaultFormat, sources: []string{}}
 }
 
-func (t *Tar) CreateFile(dst string, src ...string) (cnt int, err error) {
+func (t *Tar) Create(dst string, src ...string) (cnt int, err error) {
 	logger.Debug("Create Tarfile")
 
 	// If there isn't a destination, return err
@@ -76,7 +76,7 @@ func (t *Tar) CreateFile(dst string, src ...string) (cnt int, err error) {
 	}
 
 	t.setDelta()
-	return 0, nil
+	return int(t.Car.files), nil
 }
 
 func (t *Tar) removeFiles() error {

@@ -3,6 +3,7 @@ package carchivum
 import (
 	"bytes"
 	"compress/gzip"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,17 +14,17 @@ import (
 
 type testFile struct {
 	name    string
-	content string
+	content []byte
 }
 
-var testFiles []testFile
+var TestFiles []testFile
 
-func init() {
-	testFiles := make([]testFile, 4, 4)
-	testFiles[0] = testFile{name: "test1.txt", content: "some content"}
-	testFiles[1] = testFile{name: "test2.txt", content: "some more content"}
-	testFiles[2] = testFile{name: "dir\test1.txt", content: "different content"}
-	testFiles[3] = testFile{name: "dir\test2.txt", content: "might be different content"}
+func initTestFiles() {
+	TestFiles = make([]testFile, 0)
+	TestFiles = append(TestFiles, testFile{name: "test/test1.txt", content: []byte("some content\n")})
+	TestFiles = append(TestFiles, testFile{name: "test/test2.txt", content: []byte("some more content\n")})
+	TestFiles = append(TestFiles, testFile{name: "test/dir/test1.txt", content: []byte("different content\n")})
+	TestFiles = append(TestFiles, testFile{name: "test/dir/test2.txt", content: []byte("might be different content\n")})
 }
 
 func CreateTempTgz() (string, error) {
@@ -37,7 +38,7 @@ func CreateTempTgz() (string, error) {
 	tw := tar.NewWriter(gw)
 	defer tw.Close()
 
-	for _, testF := range testFiles {
+	for _, testF := range TestFiles {
 		hdr := &tar.Header{
 			Name: testF.name,
 			Size: int64(len(testF.content)),
@@ -46,12 +47,32 @@ func CreateTempTgz() (string, error) {
 		if err != nil {
 			return testTar, err
 		}
-		_, err = tw.Write([]byte(testF.content))
+		_, err = tw.Write(testF.content)
 		if err != nil {
 			return testTar, err
 		}
 	}
 	return testTar, nil
+}
+
+func CreateTempFiles() (dir string, err error) {
+	initTestFiles()
+	tmpDir, _ := ioutil.TempDir("", "car")
+	err = os.Chdir(tmpDir)
+	if err != nil {
+		return "", err
+	}
+	err = os.MkdirAll("test/dir", 0755)
+	if err != nil {
+		return "", err
+	}
+	for _, f := range TestFiles {
+		err = ioutil.WriteFile(f.name, f.content, 0755)
+		if err != nil {
+			return tmpDir, err
+		}
+	}
+	return tmpDir, nil
 }
 
 func TestGetFileFormat(t *testing.T) {

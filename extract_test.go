@@ -16,7 +16,7 @@ func TestExtract(t *testing.T) {
 	msg, err := Extract(fname, tDir)
 	assert.Nil(t, err)
 	assert.Equal(t, "\"/tmp/test.tgz\" extracted to \"/tmp\"", msg)
-	for _, tfiles := range testFiles {
+	for _, tfiles := range TestFiles {
 		f, err := os.Open(tfiles.name)
 		assert.Nil(t, err)
 		f.Close()
