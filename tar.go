@@ -95,8 +95,24 @@ func (t *Tar) Delete() error {
 }
 
 func (t *Tar) Extract(src io.Reader, dst string) error {
-	tr := tar.NewReader(src)
+	switch t.format {
+	case FmtGzip:
+		return t.ExtractTgz(src, dst)
+	default:
+		return FmtUnsupported.NotSupportedError()
+	}
+	return nil
+}
+func (t *Tar) ExtractTgz(src io.Reader, dst string) error {
+	gr, err := gzip.NewReader(src)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+	defer gr.Close()
 
+	tr := tar.NewReader(gr)
+	//defer tr.Close()
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
@@ -122,7 +138,7 @@ func extractTarFile(hdr *tar.Header, dst string, in io.Reader) error {
 	fP := filepath.Join(dst, hdr.Name)
 	fI := hdr.FileInfo()
 
-	err := os.MkdirAll(fP, fI.Mode())
+	err := os.MkdirAll(filepath.Dir(fP), fI.Mode())
 	if err != nil {
 		logger.Error(err)
 		return err
