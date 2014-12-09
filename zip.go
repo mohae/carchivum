@@ -112,32 +112,25 @@ func (z *Zip) CreateFile(destination string, sources ...string) (cnt int, err er
 
 // ZipBytes takes a string and bytes and returns a zip archive of the bytes
 // using the name.
-func ZipBytes(b []byte, name string) (zb []byte, err error) {
+func ZipBytes(b []byte, name string) (n int, zipped []byte, err error) {
 	buf := new(bytes.Buffer)
 	w := zip.NewWriter(buf)
-	defer func() {
-		cerr := w.Close()
-		if cerr != nil && err == nil {
-			logger.Error(cerr)
-			err = cerr
-		}
-		logger.Debug("Closed zip writer")
-	}()
-
+	defer w.Close() // defer for convenience, though it may already be closed
 	f, err := w.Create(name)
 	if err != nil {
 		logger.Error(err)
-		return zb, err
+		return 0, zipped, err
 	}
 
-	_, err = f.Write(b)
+	n, err = f.Write(b)
 	if err != nil {
 		logger.Error(err)
-		return zb, err
+		return n, zipped, err
 	}
-
-	return buf.Bytes(), err
+	w.Close() // we need to close it to get the bytes.
+	return n, buf.Bytes(), err
 }
+
 func copyTo(w io.Writer, z *zip.File) (int64, error) {
 	f, err := z.Open()
 	if err != nil {
