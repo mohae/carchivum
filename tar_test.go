@@ -13,7 +13,7 @@ func TestTar(t *testing.T) {
 	tmpDir, err := CreateTempFiles()
 	assert.Nil(t, err)
 	newT := NewTar()
-	newT.format = FmtGzip
+	newT.format = Gzip
 	tarName := filepath.Join(tmpDir, "test.tgz")
 	// Test CreateTar
 	cnt, err := newT.Create(tarName, filepath.Join(tmpDir, "test"))

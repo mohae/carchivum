@@ -1,5 +1,6 @@
-// tar implements the tape archive format.
 package carchivum
+
+// tar implements the tape archive format.
 
 import (
 	"archive/tar"
@@ -14,6 +15,7 @@ import (
 	"github.com/MichaelTJones/walk"
 )
 
+// Tar is a struct for a tar, tape archive.
 type Tar struct {
 	Car
 	writer  *tar.Writer
@@ -21,10 +23,12 @@ type Tar struct {
 	sources []string
 }
 
+// NewTar returns an initialized Tar struct ready for use.
 func NewTar() *Tar {
 	return &Tar{Car: Car{t0: time.Now()}, format: defaultFormat, sources: []string{}}
 }
 
+// Create creates a tarfile from the passed src('s) and saves it to the dst.
 func (t *Tar) Create(dst string, src ...string) (cnt int, err error) {
 	logger.Debug("Create Tarfile")
 
@@ -58,7 +62,7 @@ func (t *Tar) Create(dst string, src ...string) (cnt int, err error) {
 	}()
 
 	switch t.format {
-	case FmtGzip:
+	case Gzip:
 		err = t.CreateGzip(tball)
 		if err != nil {
 			logger.Error(err)
@@ -90,19 +94,23 @@ func (t *Tar) removeFiles() error {
 	return nil
 }
 
+// Delete is not implemented
 func (t *Tar) Delete() error {
 	return nil
 }
 
+// Extract extracts the files from src and writes them to the dst.
 func (t *Tar) Extract(src io.Reader, dst string) error {
 	switch t.format {
-	case FmtGzip:
+	case Gzip:
 		return t.ExtractTgz(src, dst)
 	default:
-		return FmtUnsupported.NotSupportedError()
+		return Unsupported.NotSupportedError()
 	}
 	return nil
 }
+
+// ExtractTgz extracts GZip'd tarballs.
 func (t *Tar) ExtractTgz(src io.Reader, dst string) error {
 	gr, err := gzip.NewReader(src)
 	if err != nil {
@@ -164,6 +172,8 @@ func extractTarFile(hdr *tar.Header, dst string, in io.Reader) error {
 
 	return nil
 }
+
+// CreateGzip creates a GZip using the passed writer.
 func (t *Tar) CreateGzip(w io.Writer) (err error) {
 	gw := gzip.NewWriter(w)
 	// Close the file with error handling
@@ -232,6 +242,7 @@ func (t *Tar) writeTar(w io.Writer) (err error) {
 
 }
 
+// Write adds the files received on the channel to the tarball.
 func (t *Tar) Write() (*sync.WaitGroup, error) {
 	logger.Debug("Write channel...")
 	var wg sync.WaitGroup

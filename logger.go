@@ -2,8 +2,9 @@ package carchivum
 
 import (
 	"errors"
-	seelog "github.com/cihub/seelog"
 	"io"
+
+	seelog "github.com/cihub/seelog"
 )
 
 var logger seelog.LoggerInterface
@@ -40,7 +41,7 @@ func SetLogWriter(writer io.Writer) error {
 	return nil
 }
 
-// Call this before app shutdown
+// FlushLog should be called before app shutdown
 func FlushLog() {
 	logger.Flush()
 }

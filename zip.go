@@ -13,37 +13,40 @@ import (
 	"github.com/MichaelTJones/walk"
 )
 
+// Zip handles .zip archives.
 type Zip struct {
 	Car
 	writer  *zip.Writer
 	fwriter *os.File
 }
 
+// NewZip returns an initialized Zip struct ready for use.
 func NewZip() *Zip {
 	return &Zip{
 		Car: Car{t0: time.Now()},
 	}
 }
 
-func (z *Zip) Create(destination string, sources ...string) (cnt int, err error) {
+// Create creates a zip file from src in the dst
+func (z *Zip) Create(dst string, src ...string) (cnt int, err error) {
 	logger.Debug("Create Zipfile")
 
 	// If there isn't a destination, return err
-	if destination == "" {
+	if dst == "" {
 		err = fmt.Errorf("destination required to create a zip archive")
 		logger.Error(err)
 		return 0, err
 	}
 
 	// If there aren't any sources, return err
-	if len(sources) == 0 {
+	if len(dtv) == 0 {
 		err = fmt.Errorf("a source is required to create a zip archive")
 		logger.Error(err)
 		return 0, err
 	}
 
 	// See if we can create the destination file before processing
-	z.fwriter, err = os.OpenFile(destination, os.O_RDWR|os.O_CREATE, 0666)
+	z.fwriter, err = os.OpenFile(dst, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		logger.Error(err)
 		return 0, err
@@ -72,8 +75,8 @@ func (z *Zip) Create(destination string, sources ...string) (cnt int, err error)
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(len(sources) - 1)
-	for _, source := range sources {
+	wg.Add(len(src) - 1)
+	for _, source := range src {
 		logger.Debug(source)
 		// first get the absolute, its needed either way
 		fullPath, err = filepath.Abs(source)
@@ -196,6 +199,7 @@ func (z *Zip) write() (*sync.WaitGroup, error) {
 	return &wg, nil
 }
 
+// ExtractFile extracts the content of src, a zip archive, to dst.
 func (z *Zip) ExtractFile(src, dst string) error {
 	r, err := zip.OpenReader(src)
 	if err != nil {

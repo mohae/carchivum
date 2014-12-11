@@ -23,19 +23,24 @@ import (
 )
 
 const (
-	FmtUnsupported Format = iota // Not a supported format
-	FmtGzip                      // Gzip compression format; always a tar
-	FmtTar                       // Tar format; normally used
-	FmtTar1                      // Tar1 header format; normalizes to FmtTar
-	FmtTar2                      // Tar1 header format; normalizes to FmtTar
-	FmtZip                       // Zip archive
-	FmtZipEmpty                  // Empty Zip Archive
-	FmtZipSpanned                // Spanned Zip Archive
-	FmtBzip2                     // Bzip2 compression
-	FmtLZH                       // LZH compression
-	FmtLZW                       // LZW compression
-	FmtRAR                       // RAR 5.0 and later compression
-	FmtRAROld                    // Rar pre 1.5 compression
+	Unsupported Format = iota // Not a supported format
+	Gzip                      // Gzip compression format; always a tar
+	Tar                       // Tar format; normally used
+	Tar1                      // Tar1 header format; normalizes to FmtTar
+	Tar2                      // Tar1 header format; normalizes to FmtTar
+	Zip                       // Zip archive
+	ZipEmpty                  // Empty Zip Archive
+	ZipSpanned                // Spanned Zip Archive
+	Bzip2                     // Bzip2 compression
+	LZH                       // LZH compression
+	LZW                       // LZW compression
+	RAR                       // RAR 5.0 and later compression
+	RAROld                    // Rar pre 1.5 compression
+)
+
+// Format is a type for file format constants.
+type (
+	Format int
 )
 
 var unsetTime time.Time
@@ -57,107 +62,106 @@ var (
 	headerRAROld     = []byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00}
 )
 
-func GetFileFormat(r io.ReaderAt) (Format, error) {
+// getFileFormat determines what format the file is in by checking the file's
+// header information.
+func getFileFormat(r io.ReaderAt) (Format, error) {
 	h := make([]byte, 8, 8)
 
 	r.ReadAt(h, 0)
 
 	if bytes.Equal(headerGzip, h[0:2]) {
-		return FmtGzip, nil
+		return Gzip, nil
 	}
 
 	if bytes.Equal(headerZip, h[0:4]) {
-		return FmtZip, nil
+		return Zip, nil
 	}
 
 	// unsupported
 	if bytes.Equal(headerRAROld, h[0:7]) {
-		return FmtUnsupported, FmtRAROld.NotSupportedError()
+		return Unsupported, RAROld.NotSupportedError()
 	}
 
 	if bytes.Equal(headerRAR, h[0:8]) {
-		return FmtUnsupported, FmtRAR.NotSupportedError()
+		return Unsupported, RAR.NotSupportedError()
 	}
 
 	if bytes.Equal(headerZipEmpty, h[0:4]) {
-		return FmtUnsupported, FmtZipEmpty.NotSupportedError()
+		return Unsupported, ZipEmpty.NotSupportedError()
 	}
 
 	if bytes.Equal(headerZipSpanned, h[0:4]) {
-		return FmtUnsupported, FmtZipSpanned.NotSupportedError()
+		return Unsupported, ZipSpanned.NotSupportedError()
 	}
 
 	if bytes.Equal(headerBzip2, h[0:3]) {
-		return FmtUnsupported, FmtBzip2.NotSupportedError()
+		return Unsupported, Bzip2.NotSupportedError()
 	}
 
 	if bytes.Equal(headerLZW, h[0:2]) {
-		return FmtUnsupported, FmtLZW.NotSupportedError()
+		return Unsupported, LZW.NotSupportedError()
 	}
 
 	if bytes.Equal(headerLZH, h[0:2]) {
-		return FmtUnsupported, FmtLZH.NotSupportedError()
+		return Unsupported, LZH.NotSupportedError()
 	}
 
 	r.ReadAt(h, 257)
 	if bytes.Equal(headerTar1, h) || bytes.Equal(headerTar2, h) {
-		return FmtTar, nil
+		return Tar, nil
 	}
 
-	return FmtUnsupported, FmtUnsupported.NotSupportedError()
+	return Unsupported, Unsupported.NotSupportedError()
 }
-
-type (
-	Format int
-)
 
 func (f Format) String() string {
 	switch f {
-	case FmtGzip:
+	case Gzip:
 		return "gzip"
-	case FmtTar1, FmtTar2:
+	case Tar1, Tar2:
 		return "tar"
-	case FmtZip:
+	case Zip:
 		return "zip"
-	case FmtZipEmpty:
+	case ZipEmpty:
 		return "empty zip archive"
-	case FmtZipSpanned:
+	case ZipSpanned:
 		return "spanned zip archive"
-	case FmtBzip2:
+	case Bzip2:
 		return "bzip2"
-	case FmtLZH:
+	case LZH:
 		return "LZH"
-	case FmtLZW:
+	case LZW:
 		return "LZW"
-	case FmtRAR:
+	case RAR:
 		return "RAR post 5.0"
-	case FmtRAROld:
+	case RAROld:
 		return "RAR pre 1.5"
 	}
 	return "unsupported"
 }
 
+// NotSupportedError returns a formatted error string
 func (f Format) NotSupportedError() error {
 	return fmt.Errorf("%s not supported", f.String())
 }
 
-var defaultFormat Format = FmtGzip
+var defaultFormat = Gzip
 
 // Options
 //var AppendDate bool
 //var o utputNameTimeFormat string = time.RFC3339
 //var UseNano bool
-var Separator string = "-"
-var MakeUnique bool = false
+//var Separator string = "-"
+//var MakeUnique bool = false
 
 // default max random number for random number generation.
 var MaxRand = 10000
 
 // we assume this count isn't going to change during runtime
-var cpu int = runtime.NumCPU()
+var cpu = runtime.NumCPU()
 
 // Arbitrarily set the multiplier to some default value.
-var CPUMultiplier int = 4
+var CPUMultiplier = 4
 
 // Car is a Compressed Archive. The struct holds information about Cars and
 // their processing.
@@ -224,15 +228,17 @@ func (c *Car) setDelta() {
 	c.𝛥t = float64(time.Since(c.t0)) / 1e9
 }
 
+// Delta returns the time delta between operation start and end.
 func (c *Car) Delta() float64 {
 	return c.𝛥t
 }
 
+// Message provides summary information about the operation performed.
 func (c *Car) Message() string {
 	return fmt.Sprintf("%q created in %4f seconds\n%d files totalling %d bytes were processed", c.Name, c.𝛥t, c.files, c.bytes)
 }
 
-// addFile  reads a file and pipes it to the zipper goroutine.
+// AddFile reads a file and pipes it to the zipper goroutine.
 func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 	logger.Debugf("root: %s, p: %s, fi.Name: %s", root, p, fi.Name())
 
@@ -409,17 +415,18 @@ func (c *Car) excludeFile(root, p string) (bool, error) {
 	return false, nil
 }
 
+// ParseFormat takes a string and returns the
 func ParseFormat(s string) (Format, error) {
 	switch s {
 	case "gzip", "tar.gz", "tgz":
-		return FmtGzip, nil
+		return Gzip, nil
 	case "tar":
-		return FmtTar, nil
+		return Tar, nil
 	case "zip":
-		return FmtZip, nil
+		return Zip, nil
 	}
 
-	return FmtUnsupported, FmtUnsupported.NotSupportedError()
+	return Unsupported, Unsupported.NotSupportedError()
 }
 
 //func formattedNow() string {
