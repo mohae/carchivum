@@ -25,14 +25,7 @@ func Extract(src, dst string) (message string, err error) {
 		logger.Error(err)
 		return "", err
 	}
-	// Close the file with error handling
-	defer func() {
-		if cerr := srcF.Close(); cerr != nil && err == nil {
-			logger.Error(cerr)
-			err = cerr
-		}
-	}()
-
+	defer srcF.Close() // don't error check as it may be closed
 	// set dst
 	if dst == "" && CreateDir {
 		// make the destination folder the same as the src name
@@ -52,7 +45,8 @@ func Extract(src, dst string) (message string, err error) {
 	case FmtGzip:
 		err = extractGzip(srcF, dst)
 	case FmtZip:
-		return "not implemented", nil
+		srcF.Close()
+		err = extractZipFile(src, dst)
 	case FmtTar:
 		err = extractTar(srcF, dst)
 	default:
@@ -91,4 +85,9 @@ func extractGzip(src *os.File, dst string) error {
 	}()
 
 	return extractTar(gR, dst)
+}
+
+func extractZipFile(src, dst string) error {
+	z := NewZip()
+	return z.ExtractFile(src, dst)
 }

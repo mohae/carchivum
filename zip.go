@@ -19,13 +19,13 @@ type Zip struct {
 	fwriter *os.File
 }
 
-func NewZipArchive() *Zip {
+func NewZip() *Zip {
 	return &Zip{
 		Car: Car{t0: time.Now()},
 	}
 }
 
-func (z *Zip) CreateFile(destination string, sources ...string) (cnt int, err error) {
+func (z *Zip) Create(destination string, sources ...string) (cnt int, err error) {
 	logger.Debug("Create Zipfile")
 
 	// If there isn't a destination, return err
@@ -57,7 +57,7 @@ func (z *Zip) CreateFile(destination string, sources ...string) (cnt int, err er
 	logger.Debug("Setup channel")
 	// Set up the file queue and its drain.
 	z.FileCh = make(chan *os.File)
-	wait, err := z.Write()
+	wait, err := z.write()
 	if err != nil {
 		logger.Error(err)
 		return 0, err
@@ -107,7 +107,7 @@ func (z *Zip) CreateFile(destination string, sources ...string) (cnt int, err er
 
 	z.fwriter.Close()
 	z.setDelta()
-	return 0, nil
+	return int(z.Car.files), nil
 }
 
 // ZipBytes takes a string and bytes and returns a zip archive of the bytes
@@ -148,7 +148,7 @@ func copyTo(w io.Writer, z *zip.File) (int64, error) {
 // goroutine.
 //
 // SEE where to add defer
-func (z *Zip) Write() (*sync.WaitGroup, error) {
+func (z *Zip) write() (*sync.WaitGroup, error) {
 	logger.Debug("Write channel...")
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -194,4 +194,39 @@ func (z *Zip) Write() (*sync.WaitGroup, error) {
 	}()
 
 	return &wg, nil
+}
+
+func (z *Zip) ExtractFile(src, dst string) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		rc, err := f.Open()
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+		err = os.MkdirAll(filepath.Join(dst, filepath.Dir(f.Name)), 0755)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+		dF, err := os.Create(filepath.Join(dst, f.Name))
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+		_, err = io.Copy(dF, rc)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+		rc.Close()
+		dF.Close()
+	}
+	return nil
 }

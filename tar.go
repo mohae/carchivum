@@ -44,7 +44,7 @@ func (t *Tar) Create(dst string, src ...string) (cnt int, err error) {
 
 	t.sources = src
 	// See if we can create the destination file before processing
-	tball, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE, 0666)
+	tball, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE, 0744)
 	if err != nil {
 		logger.Error(err)
 		return 0, err
