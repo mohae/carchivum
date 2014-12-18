@@ -62,7 +62,7 @@ func (t *Tar) Create(dst string, src ...string) (cnt int, err error) {
 	}()
 
 	switch t.format {
-	case Gzip:
+	case GzipFmt:
 		err = t.CreateGzip(tball)
 		if err != nil {
 			logger.Error(err)
@@ -102,10 +102,10 @@ func (t *Tar) Delete() error {
 // Extract extracts the files from src and writes them to the dst.
 func (t *Tar) Extract(src io.Reader, dst string) error {
 	switch t.format {
-	case Gzip:
+	case GzipFmt:
 		return t.ExtractTgz(src, dst)
 	default:
-		return Unsupported.NotSupportedError()
+		return UnsupportedFmt.NotSupportedError()
 	}
 	return nil
 }

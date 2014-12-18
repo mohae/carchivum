@@ -20,22 +20,24 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/crypto/ssh"
 )
 
 const (
-	Unsupported Format = iota // Not a supported format
-	Gzip                      // Gzip compression format; always a tar
-	Tar                       // Tar format; normally used
-	Tar1                      // Tar1 header format; normalizes to FmtTar
-	Tar2                      // Tar1 header format; normalizes to FmtTar
-	Zip                       // Zip archive
-	ZipEmpty                  // Empty Zip Archive
-	ZipSpanned                // Spanned Zip Archive
-	Bzip2                     // Bzip2 compression
-	LZH                       // LZH compression
-	LZW                       // LZW compression
-	RAR                       // RAR 5.0 and later compression
-	RAROld                    // Rar pre 1.5 compression
+	UnsupportedFmt Format = iota // Not a supported format
+	GzipFmt                      // Gzip compression format; always a tar
+	TarFmt                       // Tar format; normally used
+	Tar1Fmt                      // Tar1 header format; normalizes to FmtTar
+	Tar2Fmt                      // Tar1 header format; normalizes to FmtTar
+	ZipFmt                       // Zip archive
+	ZipEmptyFmt                  // Empty Zip Archive
+	ZipSpannedFmt                // Spanned Zip Archive
+	Bzip2Fmt                     // Bzip2 compression
+	LZHFmt                       // LZH compression
+	LZWFmt                       // LZW compression
+	RARFmt                       // RAR 5.0 and later compression
+	RAROldFmt                    // Rar pre 1.5 compression
 )
 
 // Format is a type for file format constants.
@@ -70,71 +72,71 @@ func getFileFormat(r io.ReaderAt) (Format, error) {
 	r.ReadAt(h, 0)
 
 	if bytes.Equal(headerGzip, h[0:2]) {
-		return Gzip, nil
+		return GzipFmt, nil
 	}
 
 	if bytes.Equal(headerZip, h[0:4]) {
-		return Zip, nil
+		return ZipFmt, nil
 	}
 
 	// unsupported
 	if bytes.Equal(headerRAROld, h[0:7]) {
-		return Unsupported, RAROld.NotSupportedError()
+		return UnsupportedFmt, RAROldFmt.NotSupportedError()
 	}
 
 	if bytes.Equal(headerRAR, h[0:8]) {
-		return Unsupported, RAR.NotSupportedError()
+		return UnsupportedFmt, RARFmt.NotSupportedError()
 	}
 
 	if bytes.Equal(headerZipEmpty, h[0:4]) {
-		return Unsupported, ZipEmpty.NotSupportedError()
+		return UnsupportedFmt, ZipEmptyFmt.NotSupportedError()
 	}
 
 	if bytes.Equal(headerZipSpanned, h[0:4]) {
-		return Unsupported, ZipSpanned.NotSupportedError()
+		return UnsupportedFmt, ZipSpannedFmt.NotSupportedError()
 	}
 
 	if bytes.Equal(headerBzip2, h[0:3]) {
-		return Unsupported, Bzip2.NotSupportedError()
+		return UnsupportedFmt, Bzip2Fmt.NotSupportedError()
 	}
 
 	if bytes.Equal(headerLZW, h[0:2]) {
-		return Unsupported, LZW.NotSupportedError()
+		return UnsupportedFmt, LZWFmt.NotSupportedError()
 	}
 
 	if bytes.Equal(headerLZH, h[0:2]) {
-		return Unsupported, LZH.NotSupportedError()
+		return UnsupportedFmt, LZHFmt.NotSupportedError()
 	}
 
 	r.ReadAt(h, 257)
 	if bytes.Equal(headerTar1, h) || bytes.Equal(headerTar2, h) {
-		return Tar, nil
+		return TarFmt, nil
 	}
 
-	return Unsupported, Unsupported.NotSupportedError()
+	return UnsupportedFmt, UnsupportedFmt.NotSupportedError()
 }
 
 func (f Format) String() string {
 	switch f {
-	case Gzip:
+	case GzipFmt:
 		return "gzip"
-	case Tar1, Tar2:
+	case Tar1Fmt, Tar2Fmt:
 		return "tar"
-	case Zip:
+	case ZipFmt:
 		return "zip"
-	case ZipEmpty:
+	case ZipEmptyFmt:
 		return "empty zip archive"
-	case ZipSpanned:
+	case ZipSpannedFmt:
 		return "spanned zip archive"
-	case Bzip2:
+	case Bzip2Fmt:
 		return "bzip2"
-	case LZH:
+	case LZHFmt:
 		return "LZH"
-	case LZW:
+	case LZWFmt:
 		return "LZW"
-	case RAR:
+	case RARFmt:
 		return "RAR post 5.0"
-	case RAROld:
+	case RAROldFmt:
 		return "RAR pre 1.5"
 	}
 	return "unsupported"
@@ -145,7 +147,7 @@ func (f Format) NotSupportedError() error {
 	return fmt.Errorf("%s not supported", f.String())
 }
 
-var defaultFormat = Gzip
+var defaultFormat = GzipFmt
 
 // Options
 //var AppendDate bool
@@ -419,14 +421,14 @@ func (c *Car) excludeFile(root, p string) (bool, error) {
 func ParseFormat(s string) (Format, error) {
 	switch s {
 	case "gzip", "tar.gz", "tgz":
-		return Gzip, nil
+		return GzipFmt, nil
 	case "tar":
-		return Tar, nil
+		return TarFmt, nil
 	case "zip":
-		return Zip, nil
+		return ZipFmt, nil
 	}
 
-	return Unsupported, Unsupported.NotSupportedError()
+	return UnsupportedFmt, UnsupportedFmt.NotSupportedError()
 }
 
 //func formattedNow() string {
@@ -460,4 +462,15 @@ func getFileParts(s string) (dir, filename, ext string, err error) {
 	err = fmt.Errorf("unable to determine destination filename and extension")
 	logger.Error(err)
 	return dir, filename, ext, err
+}
+
+func Push() error {
+	cfg := &ssh.ClientConfig{
+		User: "asd",
+		Auth: []ssh.AuthMethod{ssh.Password("asd")},
+	}
+
+	_ = cfg
+
+	return nil
 }

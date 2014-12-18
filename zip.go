@@ -39,7 +39,7 @@ func (z *Zip) Create(dst string, src ...string) (cnt int, err error) {
 	}
 
 	// If there aren't any sources, return err
-	if len(dtv) == 0 {
+	if len(dst) == 0 {
 		err = fmt.Errorf("a source is required to create a zip archive")
 		logger.Error(err)
 		return 0, err

@@ -81,17 +81,17 @@ func TestGetFileFormat(t *testing.T) {
 		typ         Format
 		expectedErr string
 	}{
-		{[]byte{0x1f, 0x8b}, Gzip, ""},
-		{[]byte{0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x30, 0x30}, Tar, ""},
-		{[]byte{0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x20, 0x00}, Tar, ""},
-		{[]byte{0x50, 0x4b, 0x03, 0x04}, Zip, ""},
-		{[]byte{0x50, 0x4b, 0x05, 0x06}, ZipEmpty, "empty zip archive not supported"},
-		{[]byte{0x50, 0x4b, 0x07, 0x08}, ZipSpanned, "spanned zip archive not supported"},
-		{[]byte{0x42, 0x5a, 0x68}, Bzip2, "bzip2 not supported"},
-		{[]byte{0x1f, 0xa0}, LZH, "LZH not supported"},
-		{[]byte{0x1f, 0x9d}, LZW, "LZW not supported"},
-		{[]byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x01, 0x00}, RAR, "RAR post 5.0 not supported"},
-		{[]byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00}, RAROld, "RAR pre 1.5 not supported"},
+		{[]byte{0x1f, 0x8b}, GzipFmt, ""},
+		{[]byte{0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x30, 0x30}, TarFmt, ""},
+		{[]byte{0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x20, 0x00}, TarFmt, ""},
+		{[]byte{0x50, 0x4b, 0x03, 0x04}, ZipFmt, ""},
+		{[]byte{0x50, 0x4b, 0x05, 0x06}, ZipEmptyFmt, "empty zip archive not supported"},
+		{[]byte{0x50, 0x4b, 0x07, 0x08}, ZipSpannedFmt, "spanned zip archive not supported"},
+		{[]byte{0x42, 0x5a, 0x68}, Bzip2Fmt, "bzip2 not supported"},
+		{[]byte{0x1f, 0xa0}, LZHFmt, "LZH not supported"},
+		{[]byte{0x1f, 0x9d}, LZWFmt, "LZW not supported"},
+		{[]byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x01, 0x00}, RARFmt, "RAR post 5.0 not supported"},
+		{[]byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00}, RAROldFmt, "RAR pre 1.5 not supported"},
 	}
 	for _, test := range tests {
 		r := bytes.NewReader(test.bytes)
@@ -113,19 +113,19 @@ func TestParseFormat(t *testing.T) {
 		expected    Format
 		expectedErr string
 	}{
-		{"gzip", Gzip, ""},
-		{"tar.gz", Gzip, ""},
-		{"tgz", Gzip, ""},
-		{"tar", Tar, ""},
-		{"zip", Zip, ""},
-		{"z", Unsupported, "unsupported not supported"},
+		{"gzip", GzipFmt, ""},
+		{"tar.gz", GzipFmt, ""},
+		{"tgz", GzipFmt, ""},
+		{"tar", TarFmt, ""},
+		{"zip", ZipFmt, ""},
+		{"z", UnsupportedFmt, "unsupported not supported"},
 	}
 
 	for _, test := range tests {
 		f, err := ParseFormat(test.value)
 		if test.expectedErr != "" {
 			assert.Equal(t, test.expectedErr, err.Error())
-			assert.Equal(t, Unsupported, f)
+			assert.Equal(t, UnsupportedFmt, f)
 			continue
 		}
 		assert.Nil(t, err)
