@@ -154,7 +154,7 @@ func extractTarFile(hdr *tar.Header, dst string, in io.Reader) error {
 	if fI.IsDir() {
 		return nil
 	}
-	if fI.Mode()&os.ModeSymlink != 0 {
+	if fI.Mode() && os.ModeSymlink != 0 {
 		return os.Symlink(hdr.Linkname, fP)
 	}
 
@@ -163,6 +163,7 @@ func extractTarFile(hdr *tar.Header, dst string, in io.Reader) error {
 		logger.Error(err)
 		return err
 	}
+	defer dF.Close()
 
 	_, err = io.Copy(dF, in)
 	if err != nil {
