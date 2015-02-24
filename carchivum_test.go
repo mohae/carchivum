@@ -1,6 +1,7 @@
 package carchivum
 
 import (
+	"archive/tar"
 	"bytes"
 	"compress/gzip"
 	"io/ioutil"
@@ -8,7 +9,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dotcloud/tar"
 	"github.com/stretchr/testify/assert"
 )
 

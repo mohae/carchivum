@@ -7,6 +7,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -30,19 +31,17 @@ func NewTar() *Tar {
 
 // Create creates a tarfile from the passed src('s) and saves it to the dst.
 func (t *Tar) Create(dst string, src ...string) (cnt int, err error) {
-	logger.Debug("Create Tarfile")
-
 	// If there isn't a destination, return err
 	if dst == "" {
 		err = fmt.Errorf("destination required to create a tar archive")
-		logger.Error(err)
+		log.Print(err)
 		return 0, err
 	}
 
 	// If there aren't any sources, return err
 	if len(src) == 0 {
 		err = fmt.Errorf("a source is required to create a tar archive")
-		logger.Error(err)
+		log.Print(err)
 		return 0, err
 	}
 
@@ -50,13 +49,13 @@ func (t *Tar) Create(dst string, src ...string) (cnt int, err error) {
 	// See if we can create the destination file before processing
 	tball, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE, 0744)
 	if err != nil {
-		logger.Error(err)
+		log.Print(err)
 		return 0, err
 	}
 	defer func() {
 		cerr := tball.Close()
 		if cerr != nil && err == nil {
-			logger.Error(cerr)
+			log.Print(cerr)
 			err = cerr
 		}
 	}()
@@ -65,7 +64,7 @@ func (t *Tar) Create(dst string, src ...string) (cnt int, err error) {
 	case GzipFmt:
 		err = t.CreateGzip(tball)
 		if err != nil {
-			logger.Error(err)
+			log.Print(err)
 			return 0, err
 		}
 	}
@@ -74,7 +73,7 @@ func (t *Tar) Create(dst string, src ...string) (cnt int, err error) {
 		err := t.removeFiles()
 		if err != nil {
 			err = fmt.Errorf("an error was encountered while deleting the archived files; some files may not be deleted: %q", err)
-			logger.Error(err)
+			log.Print(err)
 			return 0, err
 		}
 	}
@@ -87,7 +86,7 @@ func (t *Tar) removeFiles() error {
 	for _, file := range t.deleteList {
 		err := os.Remove(file)
 		if err != nil {
-			logger.Error(err)
+			log.Print(err)
 			return err
 		}
 	}
@@ -114,7 +113,7 @@ func (t *Tar) Extract(src io.Reader, dst string) error {
 func (t *Tar) ExtractTgz(src io.Reader, dst string) error {
 	gr, err := gzip.NewReader(src)
 	if err != nil {
-		logger.Error(err)
+		log.Print(err)
 		return err
 	}
 	defer gr.Close()
@@ -127,7 +126,7 @@ func (t *Tar) ExtractTgz(src io.Reader, dst string) error {
 			break // break at eof
 		}
 		if err != nil {
-			logger.Error(err)
+			log.Print(err)
 			return err
 		}
 		if hdr.Name == "." {
@@ -135,7 +134,7 @@ func (t *Tar) ExtractTgz(src io.Reader, dst string) error {
 		}
 		err = extractTarFile(hdr, dst, tr)
 		if err != nil {
-			logger.Error(err)
+			log.Print(err)
 			return err
 		}
 	}
@@ -148,26 +147,26 @@ func extractTarFile(hdr *tar.Header, dst string, in io.Reader) error {
 
 	err := os.MkdirAll(filepath.Dir(fP), fI.Mode())
 	if err != nil {
-		logger.Error(err)
+		log.Print(err)
 		return err
 	}
 	if fI.IsDir() {
 		return nil
 	}
-	if fI.Mode() && os.ModeSymlink != 0 {
+	if fI.Mode()&os.ModeSymlink != 0 {
 		return os.Symlink(hdr.Linkname, fP)
 	}
 
 	dF, err := os.OpenFile(fP, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fI.Mode())
 	if err != nil {
-		logger.Error(err)
+		log.Print(err)
 		return err
 	}
 	defer dF.Close()
 
 	_, err = io.Copy(dF, in)
 	if err != nil {
-		logger.Error(err)
+		log.Print(err)
 		return err
 	}
 
@@ -181,10 +180,9 @@ func (t *Tar) CreateGzip(w io.Writer) (err error) {
 	defer func() {
 		cerr := gw.Close()
 		if cerr != nil && err == nil {
-			logger.Error(cerr)
+			log.Print(cerr)
 			err = cerr
 		}
-		logger.Debug("Closed gtar writer")
 	}()
 
 	err = t.writeTar(gw)
@@ -196,18 +194,16 @@ func (t *Tar) writeTar(w io.Writer) (err error) {
 	defer func() {
 		cerr := t.writer.Close()
 		if cerr != nil && err == nil {
-			logger.Error(cerr)
+			log.Print(cerr)
 			err = cerr
 		}
-		logger.Debug("closed tar writer")
 	}()
 
-	logger.Debug("Setup channel")
 	t.FileCh = make(chan *os.File)
 
 	wait, err := t.Write()
 	if err != nil {
-		logger.Error(err)
+		log.Print(err)
 		return err
 	}
 
@@ -219,22 +215,19 @@ func (t *Tar) writeTar(w io.Writer) (err error) {
 	var wg sync.WaitGroup
 	wg.Add(len(t.sources) - 1)
 	for _, source := range t.sources {
-		logger.Debug(source)
-
 		fullPath, err = filepath.Abs(source)
 		if err != nil {
-			logger.Error(err)
+			log.Print(err)
 			return err
 		}
 
 		err = walk.Walk(fullPath, visitor)
 		if err != nil {
-			logger.Error(err)
+			log.Print(err)
 			return err
 		}
 	}
 
-	logger.Debug("wg wait")
 	wg.Wait()
 	close(t.FileCh)
 	wait.Wait()
@@ -245,23 +238,21 @@ func (t *Tar) writeTar(w io.Writer) (err error) {
 
 // Write adds the files received on the channel to the tarball.
 func (t *Tar) Write() (*sync.WaitGroup, error) {
-	logger.Debug("Write channel...")
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() error {
 		defer wg.Done()
 
 		for f := range t.FileCh {
-			logger.Debugf("write %s", f.Name())
 			info, err := f.Stat()
 			if err != nil {
-				logger.Error(err)
+				log.Print(err)
 				return err
 			}
 
 			header, err := tar.FileInfoHeader(info, "")
 			if err != nil {
-				logger.Error(err)
+				log.Print(err)
 				return err
 			}
 
@@ -280,23 +271,21 @@ func (t *Tar) Write() (*sync.WaitGroup, error) {
 				header.Mode = int64(t.Mode)
 			}
 
-			logger.Debugf("%+v", header)
-
 			err = t.writer.WriteHeader(header)
 			if err != nil {
-				logger.Error(err)
+				log.Print(err)
 				return err
 			}
 
 			io.Copy(t.writer, f)
 			if err != nil {
-				logger.Error(err)
+				log.Print(err)
 				return err
 			}
 
 			err = f.Close()
 			if err != nil {
-				logger.Error(err)
+				log.Print(err)
 				return err
 			}
 		}

@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -242,8 +243,6 @@ func (c *Car) Message() string {
 
 // AddFile reads a file and pipes it to the zipper goroutine.
 func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
-	logger.Debugf("root: %s, p: %s, fi.Name: %s", root, p, fi.Name())
-
 	// Check fileInfo to see if this should be added to archive
 	process, err := c.filterFileInfo(fi)
 	if err != nil {
@@ -265,12 +264,11 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 	var relPath string
 	relPath, err = filepath.Rel(root, p)
 	if err != nil {
-		logger.Error(err)
+		log.Print(err)
 		return err
 	}
 
 	if relPath == "," {
-		logger.Debug("Don't add relative root")
 		return nil
 	}
 
@@ -281,7 +279,7 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 
 	f, err := os.Open(p)
 	if err != nil {
-		logger.Error(err)
+		log.Print(err)
 		return err
 	}
 
@@ -296,7 +294,6 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 	c.FileCh <- f
 	c.lock.Unlock()
 
-	logger.Debugf("add to delete: %s", fullpath)
 	return nil
 }
 
@@ -304,12 +301,9 @@ func (c *Car) filterFileInfo(fi os.FileInfo) (bool, error) {
 	// Don't add symlinks, otherwise would have to code some cycle
 	// detection amongst other stuff.
 	if fi.Mode()&os.ModeSymlink == os.ModeSymlink {
-		logger.Debugf("don't follow symlinks: %q", fi.Name())
 		return false, nil
 	}
 
-	logger.Infof("mtime: %v", c.NewerMTime)
-	logger.Infof("modtime: %v", fi.ModTime())
 	if c.NewerMTime != unsetTime {
 		if !fi.ModTime().After(c.NewerMTime) {
 			return false, nil
@@ -321,7 +315,6 @@ func (c *Car) filterFileInfo(fi os.FileInfo) (bool, error) {
 
 func (c *Car) filterPath(root, p string) (bool, error) {
 	if strings.HasSuffix(root, p) {
-		logger.Debugf("%s | %s, don't add if source is the source directory", root, p)
 		return false, nil
 	}
 
@@ -330,7 +323,6 @@ func (c *Car) filterPath(root, p string) (bool, error) {
 		return false, err
 	}
 	if !b {
-		logger.Debugf("don't include %q", p)
 		return false, nil
 	}
 
@@ -339,7 +331,6 @@ func (c *Car) filterPath(root, p string) (bool, error) {
 		return false, err
 	}
 	if b {
-		logger.Debugf("exclude %q", p)
 		return false, nil
 	}
 
@@ -347,11 +338,8 @@ func (c *Car) filterPath(root, p string) (bool, error) {
 }
 
 func (c *Car) includeFile(root, p string) (bool, error) {
-	logger.Infof("%sroot: %s c.IncludeAnchored %s", root, p, c.IncludeAnchored)
 	if c.IncludeAnchored != "" {
-		logger.Info(filepath.Base(p))
 		if strings.HasPrefix(filepath.Base(c.IncludeAnchored), p) {
-			logger.Info("has prefix")
 			return true, nil
 		}
 	}
@@ -359,7 +347,6 @@ func (c *Car) includeFile(root, p string) (bool, error) {
 	// since we are just evaluating a file, we use match and look at the
 	// fullpath
 	if c.Include != "" {
-		logger.Debugf("c.Include: %s", c.Include)
 		matches, err := filepath.Match(c.Include, filepath.Join(root, p))
 		if err != nil {
 			return false, err
@@ -371,7 +358,6 @@ func (c *Car) includeFile(root, p string) (bool, error) {
 	}
 
 	if c.IncludeExtCount > 0 {
-		logger.Debugf("IncludeExt %d: %v", c.IncludeExtCount, c.IncludeExt)
 		for _, ext := range c.IncludeExt {
 			if strings.HasSuffix(filepath.Base(p), "."+ext) {
 				return true, nil
@@ -384,11 +370,8 @@ func (c *Car) includeFile(root, p string) (bool, error) {
 }
 
 func (c *Car) excludeFile(root, p string) (bool, error) {
-	logger.Infof("%s c.ExcludeAnchored %s", p, c.ExcludeAnchored)
 	if c.ExcludeAnchored != "" {
-		logger.Info(filepath.Base(p))
 		if strings.HasPrefix(filepath.Base(p), c.ExcludeAnchored) {
-			logger.Info("has prefix")
 			return true, nil
 		}
 	}
@@ -450,7 +433,7 @@ func getFileParts(s string) (dir, filename, ext string, err error) {
 		return dir, filename, ext, nil
 	case 0:
 		err := fmt.Errorf("no destination filename found in %s", s)
-		logger.Error(err)
+		log.Print(err)
 		return dir, filename, ext, err
 	default:
 		// join all but the last parts together with a "."
@@ -460,7 +443,7 @@ func getFileParts(s string) (dir, filename, ext string, err error) {
 	}
 
 	err = fmt.Errorf("unable to determine destination filename and extension")
-	logger.Error(err)
+	log.Print(err)
 	return dir, filename, ext, err
 }
 

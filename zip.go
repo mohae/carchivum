@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -29,26 +30,24 @@ func NewZip() *Zip {
 
 // Create creates a zip file from src in the dst
 func (z *Zip) Create(dst string, src ...string) (cnt int, err error) {
-	logger.Debug("Create Zipfile")
-
 	// If there isn't a destination, return err
 	if dst == "" {
 		err = fmt.Errorf("destination required to create a zip archive")
-		logger.Error(err)
+		log.Print(err)
 		return 0, err
 	}
 
 	// If there aren't any sources, return err
 	if len(dst) == 0 {
 		err = fmt.Errorf("a source is required to create a zip archive")
-		logger.Error(err)
+		log.Print(err)
 		return 0, err
 	}
 
 	// See if we can create the destination file before processing
 	z.fwriter, err = os.OpenFile(dst, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
-		logger.Error(err)
+		log.Print(err)
 		return 0, err
 	}
 	defer z.fwriter.Close()
@@ -57,12 +56,11 @@ func (z *Zip) Create(dst string, src ...string) (cnt int, err error) {
 	z.writer = zip.NewWriter(buf)
 	defer z.writer.Close()
 
-	logger.Debug("Setup channel")
 	// Set up the file queue and its drain.
 	z.FileCh = make(chan *os.File)
 	wait, err := z.write()
 	if err != nil {
-		logger.Error(err)
+		log.Print(err)
 		return 0, err
 	}
 
@@ -77,24 +75,21 @@ func (z *Zip) Create(dst string, src ...string) (cnt int, err error) {
 	var wg sync.WaitGroup
 	wg.Add(len(src) - 1)
 	for _, source := range src {
-		logger.Debug(source)
 		// first get the absolute, its needed either way
 		fullPath, err = filepath.Abs(source)
 		if err != nil {
-			logger.Error(err)
+			log.Print(err)
 			return 0, err
 		}
 
 		err = walk.Walk(fullPath, visitor)
 		if err != nil {
-			logger.Error(err)
+			log.Print(err)
 			return 0, err
 		}
 	}
 
-	logger.Debug("wg wait")
 	wg.Wait()
-	logger.Debug("before closing channel and waiting")
 
 	close(z.FileCh)
 	wait.Wait()
@@ -104,7 +99,7 @@ func (z *Zip) Create(dst string, src ...string) (cnt int, err error) {
 	// Copy the zip
 	_, err = z.fwriter.Write(buf.Bytes())
 	if err != nil {
-		logger.Error(err)
+		log.Print(err)
 		return 0, err
 	}
 
@@ -121,13 +116,13 @@ func ZipBytes(b []byte, name string) (n int, zipped []byte, err error) {
 	defer w.Close() // defer for convenience, though it may already be closed
 	f, err := w.Create(name)
 	if err != nil {
-		logger.Error(err)
+		log.Print(err)
 		return 0, zipped, err
 	}
 
 	n, err = f.Write(b)
 	if err != nil {
-		logger.Error(err)
+		log.Print(err)
 		return n, zipped, err
 	}
 	w.Close() // we need to close it to get the bytes.
@@ -152,7 +147,6 @@ func copyTo(w io.Writer, z *zip.File) (int64, error) {
 //
 // SEE where to add defer
 func (z *Zip) write() (*sync.WaitGroup, error) {
-	logger.Debug("Write channel...")
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() error {
@@ -160,10 +154,9 @@ func (z *Zip) write() (*sync.WaitGroup, error) {
 
 		for f := range z.FileCh {
 			defer f.Close()
-			logger.Debugf("write %s", f.Name())
 			info, err := f.Stat()
 			if err != nil {
-				logger.Error(err)
+				log.Print(err)
 				return err
 			}
 
@@ -173,7 +166,7 @@ func (z *Zip) write() (*sync.WaitGroup, error) {
 
 			header, err := zip.FileInfoHeader(info)
 			if err != nil {
-				logger.Error(err)
+				log.Print(err)
 				return err
 			}
 
@@ -181,13 +174,13 @@ func (z *Zip) write() (*sync.WaitGroup, error) {
 
 			fw, err := z.writer.CreateHeader(header)
 			if err != nil {
-				logger.Error(err)
+				log.Print(err)
 				return err
 			}
 
 			_, err = io.Copy(fw, f)
 			if err != nil {
-				logger.Error(err)
+				log.Print(err)
 				return err
 			}
 
@@ -203,7 +196,7 @@ func (z *Zip) write() (*sync.WaitGroup, error) {
 func (z *Zip) ExtractFile(src, dst string) error {
 	r, err := zip.OpenReader(src)
 	if err != nil {
-		logger.Error(err)
+		log.Print(err)
 		return err
 	}
 	defer r.Close()
@@ -211,22 +204,22 @@ func (z *Zip) ExtractFile(src, dst string) error {
 	for _, f := range r.File {
 		rc, err := f.Open()
 		if err != nil {
-			logger.Error(err)
+			log.Print(err)
 			return err
 		}
 		err = os.MkdirAll(filepath.Join(dst, filepath.Dir(f.Name)), 0755)
 		if err != nil {
-			logger.Error(err)
+			log.Print(err)
 			return err
 		}
 		dF, err := os.Create(filepath.Join(dst, f.Name))
 		if err != nil {
-			logger.Error(err)
+			log.Print(err)
 			return err
 		}
 		_, err = io.Copy(dF, rc)
 		if err != nil {
-			logger.Error(err)
+			log.Print(err)
 			return err
 		}
 		rc.Close()
