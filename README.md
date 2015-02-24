@@ -17,6 +17,8 @@ Tar, tape archive, is the default archive format that carchivum uses. Carchivum 
 
 Carchivum's default compression format for tarballs is gzip.
 
+__In the future, the carchivum archives may be more than a tar, which will make `.car` files incompatible with tar. This will probably be implemented in a manner that continues to support the tar format, but no gurantees.__
+
 ### zip
 The zip format includes compression and its standard extension is `.zip`. No other compression schemes are supported. 
 
@@ -49,7 +51,9 @@ relative     string          Only archive files that are either new or have
 
 
 ## Enable logging
-Logging is disabled by default. As a package, whether carchivum logs or not and at what level is not up to it, its up to you and your application. Carchivum implemnts seelog for logging and its implementation is consistent with seelog's guidelines at https://github.com/cibun/seelog/wiki/Writing-libraries-with-seelog.
+This package uses the standard log package and logs all errors as `log.Print()` or `log.Printf()` prior to returning.
+
+It may be that this package stops logging directly and only returns the error, relying on the caller to do any logging it deems appropriate. This is a design decision I have punted, for now.
 
 ## Functionality wishlist
 
