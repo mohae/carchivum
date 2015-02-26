@@ -192,8 +192,8 @@ func (z *Zip) write() (*sync.WaitGroup, error) {
 	return &wg, nil
 }
 
-// ExtractFile extracts the content of src, a zip archive, to dst.
-func (z *Zip) ExtractFile(src, dst string) error {
+// Extract the content of src, a zip archive, to dst.
+func (z *Zip) Extract(src, dst string) error {
 	r, err := zip.OpenReader(src)
 	if err != nil {
 		log.Print(err)

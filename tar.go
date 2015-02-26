@@ -295,3 +295,79 @@ func (t *Tar) Write() (*sync.WaitGroup, error) {
 
 	return &wg, nil
 }
+
+// ExtractGzip reads a GZip using the passed reader.
+func (t *Tar) ExtractGzip(r io.Reader, dst string) (err error) {
+	gr, err := gzip.NewReader(r)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	// Close the file with error handling
+	defer func() {
+		cerr := gr.Close()
+		if cerr != nil && err == nil {
+			log.Print(cerr)
+			err = cerr
+		}
+	}()
+
+	err = t.ExtractTar(gr, dst)
+	return err
+}
+
+// ExtractTar extracts a tar file using the passed reader
+func (t *Tar) ExtractTar(r io.Reader, dst string) (err error) {
+	tr := tar.NewReader(r)
+
+	for {
+		header, err := tr.Next()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			log.Print(err)
+			return err
+		}
+
+		fname := header.Name
+		// extract is always relative to cwd, for now
+		fname = filepath.Join(dst, fname)
+		switch header.Typeflag {
+		case tar.TypeDir:
+			err = os.MkdirAll(fname, os.FileMode(header.Mode))
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+		case tar.TypeReg:
+			// create the parent directory if necessary
+			pdir := filepath.Dir(fname)
+			err = os.MkdirAll(pdir, os.FileMode(header.Mode))
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+
+			w, err := os.Create(fname)
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+			io.Copy(w, tr)
+			err = os.Chmod(fname, os.FileMode(header.Mode))
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+			w.Close()
+		default:
+			err = fmt.Errorf("Unable to extract type: %c in file %s", header.Typeflag, fname)
+			log.Print(err)
+			return err
+		}
+	}
+
+	return nil
+}

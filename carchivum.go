@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/crypto/ssh"
+	"code.google.com/p/go.crypto/ssh"
 )
 
 const (
@@ -121,7 +121,7 @@ func (f Format) String() string {
 	switch f {
 	case GzipFmt:
 		return "gzip"
-	case Tar1Fmt, Tar2Fmt:
+	case TarFmt, Tar1Fmt, Tar2Fmt:
 		return "tar"
 	case ZipFmt:
 		return "zip"
@@ -398,6 +398,52 @@ func (c *Car) excludeFile(root, p string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func Extract(src, dst string) error {
+	// determine the type of archive
+	f, err := os.Open(src)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	// find its format
+	typ, err := getFileFormat(f)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	switch typ {
+	case TarFmt:
+		tar := NewTar()
+		err := tar.ExtractTar(f, dst)
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+	case ZipFmt:
+		// Close for now, since Extract expects src and dst name
+		// TODO change it so zip expected a reader
+		f.Close()
+		zip := NewZip()
+		err := zip.Extract(src, dst)
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+	case GzipFmt:
+		tar := NewTar()
+		err := tar.ExtractGzip(f, dst)
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+	default:
+		err := fmt.Errorf("%s: %s is not a supported format", src, typ.String())
+		log.Print(err)
+		return err
+	}
+	return nil
 }
 
 // ParseFormat takes a string and returns the
