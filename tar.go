@@ -4,6 +4,7 @@ package carchivum
 
 import (
 	"archive/tar"
+	"compress/bzip2"
 	"compress/gzip"
 	"fmt"
 	"io"
@@ -67,6 +68,12 @@ func (t *Tar) Create(dst string, src ...string) (cnt int, err error) {
 			log.Print(err)
 			return 0, err
 		}
+	case Bzip2Fmt:
+		err = fmt.Errorf("Bzip2 compression is not supported")
+		return 0, err
+	default:
+		err = fmt.Errorf("Unsupported compression format: %s", t.format.String())
+		return 0, err
 	}
 
 	if t.DeleteArchived {
@@ -103,6 +110,8 @@ func (t *Tar) Extract(src io.Reader, dst string) error {
 	switch t.format {
 	case GzipFmt:
 		return t.ExtractTgz(src, dst)
+	case Bzip2Fmt:
+		return t.ExtractTbz(src, dst)
 	default:
 		return UnsupportedFmt.NotSupportedError()
 	}
@@ -119,6 +128,33 @@ func (t *Tar) ExtractTgz(src io.Reader, dst string) error {
 	defer gr.Close()
 
 	tr := tar.NewReader(gr)
+	//defer tr.Close()
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break // break at eof
+		}
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+		if hdr.Name == "." {
+			continue // skip .
+		}
+		err = extractTarFile(hdr, dst, tr)
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+	}
+	return nil
+}
+
+// ExtractTbz extracts Bzip2 compressed tarballs.
+func (t *Tar) ExtractTbz(src io.Reader, dst string) error {
+	zr := bzip2.NewReader(src)
+
+	tr := tar.NewReader(zr)
 	//defer tr.Close()
 	for {
 		hdr, err := tr.Next()

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTar(t *testing.T) {
+func TestGzipTar(t *testing.T) {
 	tmpDir, err := CreateTempFiles()
 	assert.Nil(t, err)
 	newT := NewTar()
