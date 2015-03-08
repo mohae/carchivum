@@ -80,6 +80,15 @@ func getFileFormat(r io.ReaderAt) (Format, error) {
 		return ZipFmt, nil
 	}
 
+	if bytes.Equal(headerLZW, h[0:2]) {
+		return LZWFmt, nil
+	}
+
+	// partially supported
+	if bytes.Equal(headerBzip2, h[0:3]) {
+		return Bzip2Fmt, nil
+	}
+
 	// unsupported
 	if bytes.Equal(headerRAROld, h[0:7]) {
 		return UnsupportedFmt, RAROldFmt.NotSupportedError()
@@ -95,14 +104,6 @@ func getFileFormat(r io.ReaderAt) (Format, error) {
 
 	if bytes.Equal(headerZipSpanned, h[0:4]) {
 		return UnsupportedFmt, ZipSpannedFmt.NotSupportedError()
-	}
-
-	if bytes.Equal(headerBzip2, h[0:3]) {
-		return UnsupportedFmt, Bzip2Fmt.NotSupportedError()
-	}
-
-	if bytes.Equal(headerLZW, h[0:2]) {
-		return UnsupportedFmt, LZWFmt.NotSupportedError()
 	}
 
 	if bytes.Equal(headerLZH, h[0:2]) {
@@ -438,6 +439,20 @@ func Extract(src, dst string) error {
 			log.Print(err)
 			return err
 		}
+	case Bzip2Fmt:
+		tar := NewTar()
+		err := tar.ExtractTbz(f, dst)
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+	case LZWFmt:
+		tar := NewTar()
+		err := tar.ExtractZ(f, dst)
+		if err != nil {
+			log.Print(err)
+			return err
+		}
 	default:
 		err := fmt.Errorf("%s: %s is not a supported format", src, typ.String())
 		log.Print(err)
@@ -453,6 +468,10 @@ func ParseFormat(s string) (Format, error) {
 		return GzipFmt, nil
 	case "tar":
 		return TarFmt, nil
+	case "lzw", "taz", "tz", "tar.Z":
+		return LZWFmt, nil
+	case "bz2", "tbz", "tb2", "tbz2", "tar.bz2":
+		return Bzip2Fmt, nil
 	case "zip":
 		return ZipFmt, nil
 	}

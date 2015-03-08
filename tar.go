@@ -6,6 +6,7 @@ import (
 	"archive/tar"
 	"compress/bzip2"
 	"compress/gzip"
+	"compress/lzw"
 	"fmt"
 	"io"
 	"log"
@@ -71,6 +72,12 @@ func (t *Tar) Create(dst string, src ...string) (cnt int, err error) {
 	case Bzip2Fmt:
 		err = fmt.Errorf("Bzip2 compression is not supported")
 		return 0, err
+	case LZWFmt:
+		err = t.CreateZ(tball)
+		if err != nil {
+			log.Print(err)
+			return 0, err
+		}
 	default:
 		err = fmt.Errorf("Unsupported compression format: %s", t.format.String())
 		return 0, err
@@ -112,6 +119,8 @@ func (t *Tar) Extract(src io.Reader, dst string) error {
 		return t.ExtractTgz(src, dst)
 	case Bzip2Fmt:
 		return t.ExtractTbz(src, dst)
+	case LZWFmt:
+		return t.ExtractZ(src, dst)
 	default:
 		return UnsupportedFmt.NotSupportedError()
 	}
@@ -153,6 +162,36 @@ func (t *Tar) ExtractTgz(src io.Reader, dst string) error {
 // ExtractTbz extracts Bzip2 compressed tarballs.
 func (t *Tar) ExtractTbz(src io.Reader, dst string) error {
 	zr := bzip2.NewReader(src)
+
+	tr := tar.NewReader(zr)
+	//defer tr.Close()
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break // break at eof
+		}
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+		if hdr.Name == "." {
+			continue // skip .
+		}
+		err = extractTarFile(hdr, dst, tr)
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+	}
+	return nil
+}
+
+// ExtractZ extracts tarballs compressed with LZW, typically .Z extension.
+// TODO fix so that order and width get properly set. Assuming order isn't
+// good.
+func (t *Tar) ExtractZ(src io.Reader, dst string) error {
+	zr := lzw.NewReader(src, lzw.LSB, 8)
+	defer zr.Close()
 
 	tr := tar.NewReader(zr)
 	//defer tr.Close()
@@ -222,6 +261,23 @@ func (t *Tar) CreateGzip(w io.Writer) (err error) {
 	}()
 
 	err = t.writeTar(gw)
+	return err
+}
+
+// CreateLZW compresses using LZW and LSB order using the passed writer.
+// TODO: address order so that it doesn't necessarily default to LSB
+func (t *Tar) CreateZ(w io.Writer) (err error) {
+	zw := lzw.NewWriter(w, lzw.LSB, 8)
+	// Close the file with error handling
+	defer func() {
+		cerr := zw.Close()
+		if cerr != nil && err == nil {
+			log.Print(cerr)
+			err = cerr
+		}
+	}()
+
+	err = t.writeTar(zw)
 	return err
 }
 

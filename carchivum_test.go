@@ -87,9 +87,9 @@ func TestGetFileFormat(t *testing.T) {
 		{[]byte{0x50, 0x4b, 0x03, 0x04}, ZipFmt, ""},
 		{[]byte{0x50, 0x4b, 0x05, 0x06}, ZipEmptyFmt, "empty zip archive not supported"},
 		{[]byte{0x50, 0x4b, 0x07, 0x08}, ZipSpannedFmt, "spanned zip archive not supported"},
-		{[]byte{0x42, 0x5a, 0x68}, Bzip2Fmt, "bzip2 not supported"},
+		{[]byte{0x42, 0x5a, 0x68}, Bzip2Fmt, ""},
 		{[]byte{0x1f, 0xa0}, LZHFmt, "LZH not supported"},
-		{[]byte{0x1f, 0x9d}, LZWFmt, "LZW not supported"},
+		{[]byte{0x1f, 0x9d}, LZWFmt, ""},
 		{[]byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x01, 0x00}, RARFmt, "RAR post 5.0 not supported"},
 		{[]byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00}, RAROldFmt, "RAR pre 1.5 not supported"},
 	}
@@ -118,7 +118,13 @@ func TestParseFormat(t *testing.T) {
 		{"tgz", GzipFmt, ""},
 		{"tar", TarFmt, ""},
 		{"zip", ZipFmt, ""},
-		{"z", UnsupportedFmt, "unsupported not supported"},
+		{"taz", LZWFmt, ""},
+		{"tz", LZWFmt, ""},
+		{"tar.Z", LZWFmt, ""},
+		{"tbz", Bzip2Fmt, ""},
+		{"tbz2", Bzip2Fmt, ""},
+		{"tb2", Bzip2Fmt, ""},
+		{"tar.bz2", Bzip2Fmt, ""},
 	}
 
 	for _, test := range tests {
