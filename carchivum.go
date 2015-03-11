@@ -433,7 +433,7 @@ func Extract(src, dst string) error {
 		fi, err := os.Stat(dst)
 		if err != nil {
 			// wasn't found make it
-			err := os.MkdirAll(dst, 0755)
+			err := os.MkdirAll(dst, 0744)
 			if err != nil {
 				log.Print(err)
 				return err

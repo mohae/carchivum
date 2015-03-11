@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
@@ -404,7 +405,11 @@ func (t *Tar) Write() (*sync.WaitGroup, error) {
 
 			if t.Mode > 0 {
 				header.Mode = int64(t.Mode)
+			} else {
+				header.Mode = int64(info.Mode().Perm())
 			}
+
+			header.ModTime = info.ModTime()
 
 			err = t.writer.WriteHeader(header)
 			if err != nil {
@@ -469,9 +474,16 @@ func (t *Tar) ExtractTar(r io.Reader, dst string) (err error) {
 		fname := header.Name
 		// extract is always relative to cwd, for now
 		fname = filepath.Join(dst, fname)
+		fmt.Printf("%s %s\n", fname, strconv.Itoa(int(header.Mode)))
 		switch header.Typeflag {
 		case tar.TypeDir:
-			err = os.MkdirAll(fname, os.FileMode(header.Mode))
+			err = os.MkdirAll(fname, 0744)
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+			// set the final element to the appropriate permission
+			err = os.Chmod(fname, os.FileMode(header.Mode))
 			if err != nil {
 				log.Print(err)
 				return err
@@ -479,12 +491,15 @@ func (t *Tar) ExtractTar(r io.Reader, dst string) (err error) {
 		case tar.TypeReg:
 			// create the parent directory if necessary
 			pdir := filepath.Dir(fname)
-			err = os.MkdirAll(pdir, os.FileMode(header.Mode))
+			err = os.MkdirAll(pdir, 0744)
 			if err != nil {
 				log.Print(err)
 				return err
 			}
-
+			if err != nil {
+				log.Print(err)
+				return err
+			}
 			w, err := os.Create(fname)
 			if err != nil {
 				log.Print(err)
