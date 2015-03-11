@@ -422,6 +422,32 @@ func Extract(src, dst string) error {
 		log.Print(err)
 		return err
 	}
+	if typ == UnsupportedFmt {
+		err := fmt.Errorf("%s: %s is not a supported format", src, typ.String())
+		log.Print(err)
+		return err
+	}
+
+	// if dst != "" see if it exists. If it doesn't create it
+	if dst != "" {
+		fi, err := os.Stat(dst)
+		if err != nil {
+			// wasn't found make it
+			err := os.MkdirAll(dst, 0755)
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+			goto typeSwitch
+		}
+		if !fi.IsDir() {
+			err := fmt.Errorf("cannot extract to %q: not a directory", dst)
+			log.Print(err)
+			return err
+		}
+	}
+
+typeSwitch:
 	switch typ {
 	case TarFmt:
 		tar := NewTar()
@@ -461,13 +487,13 @@ func Extract(src, dst string) error {
 			log.Print(err)
 			return err
 		}
-		//	case LZ4Fmt:
-		//		tar := NewTar()
-		//		err := tar.
-	default:
-		err := fmt.Errorf("%s: %s is not a supported format", src, typ.String())
-		log.Print(err)
-		return err
+	case LZ4Fmt:
+		tar := NewTar()
+		err := tar.ExtractLZ4(f, dst)
+		if err != nil {
+			log.Print(err)
+			return err
+		}
 	}
 	return nil
 }

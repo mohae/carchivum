@@ -128,6 +128,8 @@ func (t *Tar) Extract(src io.Reader, dst string) error {
 		return t.ExtractTbz(src, dst)
 	case LZWFmt:
 		return t.ExtractZ(src, dst)
+	case LZ4Fmt:
+		return t.ExtractLZ4(src, dst)
 	default:
 		return UnsupportedFmt.NotSupportedError()
 	}
@@ -199,6 +201,33 @@ func (t *Tar) ExtractTbz(src io.Reader, dst string) error {
 func (t *Tar) ExtractZ(src io.Reader, dst string) error {
 	zr := lzw.NewReader(src, lzw.LSB, 8)
 	defer zr.Close()
+
+	tr := tar.NewReader(zr)
+	//defer tr.Close()
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break // break at eof
+		}
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+		if hdr.Name == "." {
+			continue // skip .
+		}
+		err = extractTarFile(hdr, dst, tr)
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+	}
+	return nil
+}
+
+// ExtractLZ4 extracts LZ4 compressed tarballs.
+func (t *Tar) ExtractLZ4(src io.Reader, dst string) error {
+	zr := lz4.NewReader(src)
 
 	tr := tar.NewReader(zr)
 	//defer tr.Close()
