@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/MichaelTJones/walk"
+	lz4 "github.com/mohae/go-lz4"
 )
 
 // Tar is a struct for a tar, tape archive.
@@ -74,6 +75,12 @@ func (t *Tar) Create(dst string, src ...string) (cnt int, err error) {
 		return 0, err
 	case LZWFmt:
 		err = t.CreateZ(tball)
+		if err != nil {
+			log.Print(err)
+			return 0, err
+		}
+	case LZ4Fmt:
+		err = t.CreateLZ4(tball)
 		if err != nil {
 			log.Print(err)
 			return 0, err
@@ -250,17 +257,17 @@ func extractTarFile(hdr *tar.Header, dst string, in io.Reader) error {
 
 // CreateGzip creates a GZip using the passed writer.
 func (t *Tar) CreateGzip(w io.Writer) (err error) {
-	gw := gzip.NewWriter(w)
+	zw := gzip.NewWriter(w)
 	// Close the file with error handling
 	defer func() {
-		cerr := gw.Close()
+		cerr := zw.Close()
 		if cerr != nil && err == nil {
 			log.Print(cerr)
 			err = cerr
 		}
 	}()
 
-	err = t.writeTar(gw)
+	err = t.writeTar(zw)
 	return err
 }
 
@@ -277,6 +284,13 @@ func (t *Tar) CreateZ(w io.Writer) (err error) {
 		}
 	}()
 
+	err = t.writeTar(zw)
+	return err
+}
+
+// CreateLZ4 creates a LZ4 compressed tarball using the passed writer.
+func (t *Tar) CreateLZ4(w io.Writer) (err error) {
+	zw := lz4.NewWriter(w)
 	err = t.writeTar(zw)
 	return err
 }

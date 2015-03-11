@@ -37,6 +37,7 @@ const (
 	Bzip2Fmt                     // Bzip2 compression
 	LZHFmt                       // LZH compression
 	LZWFmt                       // LZW compression
+	LZ4Fmt                       // LZ4 compression
 	RARFmt                       // RAR 5.0 and later compression
 	RAROldFmt                    // Rar pre 1.5 compression
 )
@@ -61,6 +62,7 @@ var (
 	headerBzip2      = []byte{0x42, 0x5a, 0x68}
 	headerLZH        = []byte{0x1F, 0xa0}
 	headerLZW        = []byte{0x1F, 0x9d}
+	headerLZ4        = []byte{0x18, 0x4d, 0x2a, 0x50}
 	headerRAR        = []byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x01, 0x00}
 	headerRAROld     = []byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00}
 )
@@ -82,6 +84,10 @@ func getFileFormat(r io.ReaderAt) (Format, error) {
 
 	if bytes.Equal(headerLZW, h[0:2]) {
 		return LZWFmt, nil
+	}
+
+	if bytes.Equal(headerLZ4, h[0:4]) {
+		return LZ4Fmt, nil
 	}
 
 	// partially supported
@@ -136,6 +142,8 @@ func (f Format) String() string {
 		return "LZH"
 	case LZWFmt:
 		return "LZW"
+	case LZ4Fmt:
+		return "LZ4"
 	case RARFmt:
 		return "RAR post 5.0"
 	case RAROldFmt:
@@ -453,6 +461,9 @@ func Extract(src, dst string) error {
 			log.Print(err)
 			return err
 		}
+		//	case LZ4Fmt:
+		//		tar := NewTar()
+		//		err := tar.
 	default:
 		err := fmt.Errorf("%s: %s is not a supported format", src, typ.String())
 		log.Print(err)
@@ -472,6 +483,8 @@ func ParseFormat(s string) (Format, error) {
 		return LZWFmt, nil
 	case "bz2", "tbz", "tb2", "tbz2", "tar.bz2":
 		return Bzip2Fmt, nil
+	case "lz4", "tar.lz4", "tz4":
+		return LZ4Fmt, nil
 	case "zip":
 		return ZipFmt, nil
 	}
