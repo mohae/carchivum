@@ -152,6 +152,28 @@ func (f Format) String() string {
 	return "unsupported"
 }
 
+func FormatFromString(s string) Format {
+	switch s {
+	case "gzip", "GZIP":
+		return GzipFmt
+	case "tar", "TAR":
+		return TarFmt
+	case "zip", "ZIP":
+		return ZipFmt
+	case "bzip2", "BZIP2":
+		return Bzip2Fmt
+	case "lzh", "LZH":
+		return LZHFmt
+	case "lzw", "LZW":
+		return LZWFmt
+	case "lz4", "LZ4":
+		return LZ4Fmt
+	case "rar", "RAR":
+		return RARFmt
+	}
+	return UnsupportedFmt
+}
+
 // NotSupportedError returns a formatted error string
 func (f Format) NotSupportedError() error {
 	return fmt.Errorf("%s not supported", f.String())

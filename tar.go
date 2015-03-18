@@ -23,14 +23,14 @@ import (
 // Tar is a struct for a tar, tape archive.
 type Tar struct {
 	Car
-	writer  *tar.Writer
-	format  Format
+	writer *tar.Writer
+	Format
 	sources []string
 }
 
 // NewTar returns an initialized Tar struct ready for use.
 func NewTar() *Tar {
-	return &Tar{Car: Car{t0: time.Now()}, format: defaultFormat, sources: []string{}}
+	return &Tar{Car: Car{t0: time.Now()}, Format: defaultFormat, sources: []string{}}
 }
 
 // Create creates a tarfile from the passed src('s) and saves it to the dst.
@@ -64,7 +64,7 @@ func (t *Tar) Create(dst string, src ...string) (cnt int, err error) {
 		}
 	}()
 
-	switch t.format {
+	switch t.Format {
 	case GzipFmt:
 		err = t.CreateGzip(tball)
 		if err != nil {
@@ -87,7 +87,7 @@ func (t *Tar) Create(dst string, src ...string) (cnt int, err error) {
 			return 0, err
 		}
 	default:
-		err = fmt.Errorf("Unsupported compression format: %s", t.format.String())
+		err = fmt.Errorf("Unsupported compression format: %s", t.Format.String())
 		return 0, err
 	}
 
@@ -122,7 +122,7 @@ func (t *Tar) Delete() error {
 
 // Extract extracts the files from src and writes them to the dst.
 func (t *Tar) Extract(src io.Reader, dst string) error {
-	switch t.format {
+	switch t.Format {
 	case GzipFmt:
 		return t.ExtractTgz(src, dst)
 	case Bzip2Fmt:
