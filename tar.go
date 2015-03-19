@@ -4,6 +4,7 @@ package carchivum
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/bzip2"
 	"compress/gzip"
 	"compress/lzw"
@@ -17,7 +18,7 @@ import (
 	"time"
 
 	"github.com/MichaelTJones/walk"
-	lz4 "github.com/mohae/go-lz4"
+	lz4 "github.com/cloudflare/golz4"
 )
 
 // Tar is a struct for a tar, tape archive.
@@ -115,6 +116,175 @@ func (t *Tar) removeFiles() error {
 	return nil
 }
 
+// CreateGzip creates a GZip using the passed writer.
+func (t *Tar) CreateGzip(w io.Writer) (err error) {
+	zw := gzip.NewWriter(w)
+	// Close the file with error handling
+	defer func() {
+		cerr := zw.Close()
+		if cerr != nil && err == nil {
+			log.Print(cerr)
+			err = cerr
+		}
+	}()
+
+	err = t.writeTar(zw)
+	return err
+}
+
+// CreateLZW compresses using LZW and LSB order using the passed writer.
+// TODO: address order so that it doesn't necessarily default to LSB
+func (t *Tar) CreateZ(w io.Writer) (err error) {
+	zw := lzw.NewWriter(w, lzw.LSB, 8)
+	// Close the file with error handling
+	defer func() {
+		cerr := zw.Close()
+		if cerr != nil && err == nil {
+			log.Print(cerr)
+			err = cerr
+		}
+	}()
+
+	err = t.writeTar(zw)
+	return err
+}
+
+// CreateLZ4 creates a LZ4 compressed tarball using the passed writer.
+func (t *Tar) CreateLZ4(w io.Writer) (err error) {
+	var b []byte
+	buffW := bytes.NewBuffer(b)
+	err = t.writeTar(buffW)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	var compressed []byte
+	n, err := lz4.Compress(compressed, buffW.Bytes())
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	fmt.Println("Bytes compressed:", n)
+	n, err = w.Write(compressed)
+	if err != nil {
+		log.Print(err)
+	}
+	fmt.Println("Bytes written:", n)
+	return err
+}
+
+func (t *Tar) writeTar(w io.Writer) (err error) {
+	t.writer = tar.NewWriter(w)
+	defer func() {
+		cerr := t.writer.Close()
+		if cerr != nil && err == nil {
+			log.Print(cerr)
+			err = cerr
+		}
+	}()
+
+	t.FileCh = make(chan *os.File)
+
+	wait, err := t.Write()
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	var fullPath string
+	visitor := func(p string, fi os.FileInfo, err error) error {
+		return t.AddFile(fullPath, p, fi, err)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(t.sources) - 1)
+	for _, source := range t.sources {
+		fullPath, err = filepath.Abs(source)
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+
+		err = walk.Walk(fullPath, visitor)
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+	}
+
+	wg.Wait()
+	close(t.FileCh)
+	wait.Wait()
+
+	return err
+
+}
+
+// Write adds the files received on the channel to the tarball.
+func (t *Tar) Write() (*sync.WaitGroup, error) {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() error {
+		defer wg.Done()
+
+		for f := range t.FileCh {
+			info, err := f.Stat()
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+			if info.IsDir() {
+				continue
+			}
+
+			header, err := tar.FileInfoHeader(info, "")
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+
+			header.Name = f.Name()
+
+			// See if any header overrides need to be done
+			if t.Owner > 0 {
+				header.Uid = t.Owner
+			}
+
+			if t.Group > 0 {
+				header.Gid = t.Group
+			}
+
+			if t.Mode > 0 {
+				header.Mode = int64(t.Mode)
+			} else {
+				header.Mode = int64(info.Mode().Perm())
+			}
+
+			header.ModTime = info.ModTime()
+
+			err = t.writer.WriteHeader(header)
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+
+			_, err = io.Copy(t.writer, f)
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+
+			err = f.Close()
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+		}
+		return nil
+	}()
+	return &wg, nil
+}
+
 // Delete is not implemented
 func (t *Tar) Delete() error {
 	return nil
@@ -135,6 +305,92 @@ func (t *Tar) Extract(src io.Reader, dst string) error {
 		return UnsupportedFmt.NotSupportedError()
 	}
 	return nil
+}
+
+// ExtractTar extracts a tar file using the passed reader
+func (t *Tar) ExtractTar(r io.Reader, dst string) (err error) {
+	tr := tar.NewReader(r)
+
+	for {
+		header, err := tr.Next()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			log.Print(err)
+			return err
+		}
+
+		fname := header.Name
+		// extract is always relative to cwd, for now
+		fname = filepath.Join(dst, fname)
+		fmt.Printf("%s %s\n", fname, strconv.Itoa(int(header.Mode)))
+		switch header.Typeflag {
+		case tar.TypeDir:
+			err = os.MkdirAll(fname, 0744)
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+			// set the final element to the appropriate permission
+			err = os.Chmod(fname, os.FileMode(header.Mode))
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+		case tar.TypeReg:
+			// create the parent directory if necessary
+			pdir := filepath.Dir(fname)
+			err = os.MkdirAll(pdir, 0744)
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+			w, err := os.Create(fname)
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+			io.Copy(w, tr)
+			err = os.Chmod(fname, os.FileMode(header.Mode))
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+			w.Close()
+		default:
+			err = fmt.Errorf("Unable to extract type: %c in file %s", header.Typeflag, fname)
+			log.Print(err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ExtractGzip reads a GZip using the passed reader.
+func (t *Tar) ExtractGzip(r io.Reader, dst string) (err error) {
+	gr, err := gzip.NewReader(r)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	// Close the file with error handling
+	defer func() {
+		cerr := gr.Close()
+		if cerr != nil && err == nil {
+			log.Print(cerr)
+			err = cerr
+		}
+	}()
+
+	err = t.ExtractTar(gr, dst)
+	return err
 }
 
 // ExtractTgz extracts GZip'd tarballs.
@@ -228,6 +484,10 @@ func (t *Tar) ExtractZ(src io.Reader, dst string) error {
 
 // ExtractLZ4 extracts LZ4 compressed tarballs.
 func (t *Tar) ExtractLZ4(src io.Reader, dst string) error {
+	return nil
+}
+
+/*
 	zr := lz4.NewReader(src)
 
 	tr := tar.NewReader(zr)
@@ -252,7 +512,7 @@ func (t *Tar) ExtractLZ4(src io.Reader, dst string) error {
 	}
 	return nil
 }
-
+*/
 func extractTarFile(hdr *tar.Header, dst string, in io.Reader) error {
 	fP := filepath.Join(dst, hdr.Name)
 	fI := hdr.FileInfo()
@@ -280,243 +540,6 @@ func extractTarFile(hdr *tar.Header, dst string, in io.Reader) error {
 	if err != nil {
 		log.Print(err)
 		return err
-	}
-
-	return nil
-}
-
-// CreateGzip creates a GZip using the passed writer.
-func (t *Tar) CreateGzip(w io.Writer) (err error) {
-	zw := gzip.NewWriter(w)
-	// Close the file with error handling
-	defer func() {
-		cerr := zw.Close()
-		if cerr != nil && err == nil {
-			log.Print(cerr)
-			err = cerr
-		}
-	}()
-
-	err = t.writeTar(zw)
-	return err
-}
-
-// CreateLZW compresses using LZW and LSB order using the passed writer.
-// TODO: address order so that it doesn't necessarily default to LSB
-func (t *Tar) CreateZ(w io.Writer) (err error) {
-	zw := lzw.NewWriter(w, lzw.LSB, 8)
-	// Close the file with error handling
-	defer func() {
-		cerr := zw.Close()
-		if cerr != nil && err == nil {
-			log.Print(cerr)
-			err = cerr
-		}
-	}()
-
-	err = t.writeTar(zw)
-	return err
-}
-
-// CreateLZ4 creates a LZ4 compressed tarball using the passed writer.
-func (t *Tar) CreateLZ4(w io.Writer) (err error) {
-	zw := lz4.NewWriter(w)
-	err = t.writeTar(zw)
-	return err
-}
-
-func (t *Tar) writeTar(w io.Writer) (err error) {
-	t.writer = tar.NewWriter(w)
-	defer func() {
-		cerr := t.writer.Close()
-		if cerr != nil && err == nil {
-			log.Print(cerr)
-			err = cerr
-		}
-	}()
-
-	t.FileCh = make(chan *os.File)
-
-	wait, err := t.Write()
-	if err != nil {
-		log.Print(err)
-		return err
-	}
-
-	var fullPath string
-	visitor := func(p string, fi os.FileInfo, err error) error {
-		return t.AddFile(fullPath, p, fi, err)
-	}
-
-	var wg sync.WaitGroup
-	wg.Add(len(t.sources) - 1)
-	for _, source := range t.sources {
-		fullPath, err = filepath.Abs(source)
-		if err != nil {
-			log.Print(err)
-			return err
-		}
-
-		err = walk.Walk(fullPath, visitor)
-		if err != nil {
-			log.Print(err)
-			return err
-		}
-	}
-
-	wg.Wait()
-	close(t.FileCh)
-	wait.Wait()
-
-	return err
-
-}
-
-// Write adds the files received on the channel to the tarball.
-func (t *Tar) Write() (*sync.WaitGroup, error) {
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() error {
-		defer wg.Done()
-
-		for f := range t.FileCh {
-			info, err := f.Stat()
-			if err != nil {
-				log.Print(err)
-				return err
-			}
-
-			header, err := tar.FileInfoHeader(info, "")
-			if err != nil {
-				log.Print(err)
-				return err
-			}
-
-			header.Name = f.Name()
-
-			// See if any header overrides need to be done
-			if t.Owner > 0 {
-				header.Uid = t.Owner
-			}
-
-			if t.Group > 0 {
-				header.Gid = t.Group
-			}
-
-			if t.Mode > 0 {
-				header.Mode = int64(t.Mode)
-			} else {
-				header.Mode = int64(info.Mode().Perm())
-			}
-
-			header.ModTime = info.ModTime()
-
-			err = t.writer.WriteHeader(header)
-			if err != nil {
-				log.Print(err)
-				return err
-			}
-
-			io.Copy(t.writer, f)
-			if err != nil {
-				log.Print(err)
-				return err
-			}
-
-			err = f.Close()
-			if err != nil {
-				log.Print(err)
-				return err
-			}
-		}
-
-		return nil
-	}()
-
-	return &wg, nil
-}
-
-// ExtractGzip reads a GZip using the passed reader.
-func (t *Tar) ExtractGzip(r io.Reader, dst string) (err error) {
-	gr, err := gzip.NewReader(r)
-	if err != nil {
-		log.Print(err)
-		return err
-	}
-
-	// Close the file with error handling
-	defer func() {
-		cerr := gr.Close()
-		if cerr != nil && err == nil {
-			log.Print(cerr)
-			err = cerr
-		}
-	}()
-
-	err = t.ExtractTar(gr, dst)
-	return err
-}
-
-// ExtractTar extracts a tar file using the passed reader
-func (t *Tar) ExtractTar(r io.Reader, dst string) (err error) {
-	tr := tar.NewReader(r)
-
-	for {
-		header, err := tr.Next()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			log.Print(err)
-			return err
-		}
-
-		fname := header.Name
-		// extract is always relative to cwd, for now
-		fname = filepath.Join(dst, fname)
-		fmt.Printf("%s %s\n", fname, strconv.Itoa(int(header.Mode)))
-		switch header.Typeflag {
-		case tar.TypeDir:
-			err = os.MkdirAll(fname, 0744)
-			if err != nil {
-				log.Print(err)
-				return err
-			}
-			// set the final element to the appropriate permission
-			err = os.Chmod(fname, os.FileMode(header.Mode))
-			if err != nil {
-				log.Print(err)
-				return err
-			}
-		case tar.TypeReg:
-			// create the parent directory if necessary
-			pdir := filepath.Dir(fname)
-			err = os.MkdirAll(pdir, 0744)
-			if err != nil {
-				log.Print(err)
-				return err
-			}
-			if err != nil {
-				log.Print(err)
-				return err
-			}
-			w, err := os.Create(fname)
-			if err != nil {
-				log.Print(err)
-				return err
-			}
-			io.Copy(w, tr)
-			err = os.Chmod(fname, os.FileMode(header.Mode))
-			if err != nil {
-				log.Print(err)
-				return err
-			}
-			w.Close()
-		default:
-			err = fmt.Errorf("Unable to extract type: %c in file %s", header.Typeflag, fname)
-			log.Print(err)
-			return err
-		}
 	}
 
 	return nil
