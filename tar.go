@@ -4,6 +4,7 @@ package carchivum
 
 import (
 	"archive/tar"
+	_ "bufio"
 	"bytes"
 	"compress/bzip2"
 	"compress/gzip"
@@ -151,25 +152,35 @@ func (t *Tar) CreateZ(w io.Writer) (err error) {
 
 // CreateLZ4 creates a LZ4 compressed tarball using the passed writer.
 func (t *Tar) CreateLZ4(w io.Writer) (err error) {
-	var b []byte
-	buffW := bytes.NewBuffer(b)
-	err = t.writeTar(buffW)
+	// first create the tar in memory
+	var bw bytes.Buffer
+	err = t.writeTar(&bw)
 	if err != nil {
-		log.Print(err)
 		return err
 	}
-	var compressed []byte
-	n, err := lz4.Compress(compressed, buffW.Bytes())
+	output := make([]byte, lz4.CompressBound(bw.Bytes()))
+	n, err := lz4.Compress(bw.Bytes(), output)
+	if err != nil {
+		return err
+	}
+	fmt.Println("coimpressed bytes: ", n)
+	if n == 0 {
+		return fmt.Errorf("lz4 compression: output buffer is empty")
+	}
+	l := len(output) + 6
+	fmt.Println(l)
+	out := make([]byte, 0, l)
+	fmt.Println("output length: ", len(output))
+	fmt.Println("out length: ", len(out))
+	// magic bytes
+	out = append(out, []byte{0x04, 0x22, 0x4d, 0x18}...)
+	out = append(out, output...)
+	n, err = w.Write(out)
 	if err != nil {
 		log.Print(err)
 		return err
 	}
 	fmt.Println("Bytes compressed:", n)
-	n, err = w.Write(compressed)
-	if err != nil {
-		log.Print(err)
-	}
-	fmt.Println("Bytes written:", n)
 	return err
 }
 
