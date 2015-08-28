@@ -17,8 +17,8 @@ import (
 // Zip handles .zip archives.
 type Zip struct {
 	Car
-	writer  *zip.Writer
-	fwriter *os.File
+	*zip.Writer
+	*os.File
 }
 
 // NewZip returns an initialized Zip struct ready for use.
@@ -45,16 +45,16 @@ func (z *Zip) Create(dst string, src ...string) (cnt int, err error) {
 	}
 
 	// See if we can create the destination file before processing
-	z.fwriter, err = os.OpenFile(dst, os.O_RDWR|os.O_CREATE, 0666)
+	z.File, err = os.OpenFile(dst, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		log.Print(err)
 		return 0, err
 	}
-	defer z.fwriter.Close()
+	defer z.File.Close()
 
 	buf := new(bytes.Buffer)
-	z.writer = zip.NewWriter(buf)
-	defer z.writer.Close()
+	z.Writer = zip.NewWriter(buf)
+	defer z.Writer.Close()
 
 	// Set up the file queue and its drain.
 	z.FileCh = make(chan *os.File)
@@ -94,16 +94,16 @@ func (z *Zip) Create(dst string, src ...string) (cnt int, err error) {
 	close(z.FileCh)
 	wait.Wait()
 
-	z.writer.Close()
+	z.Writer.Close()
 
 	// Copy the zip
-	_, err = z.fwriter.Write(buf.Bytes())
+	_, err = z.File.Write(buf.Bytes())
 	if err != nil {
 		log.Print(err)
 		return 0, err
 	}
 
-	z.fwriter.Close()
+	z.File.Close()
 	z.setDelta()
 	return int(z.Car.files), nil
 }
@@ -172,7 +172,7 @@ func (z *Zip) write() (*sync.WaitGroup, error) {
 
 			header.Name = f.Name()
 
-			fw, err := z.writer.CreateHeader(header)
+			fw, err := z.Writer.CreateHeader(header)
 			if err != nil {
 				log.Print(err)
 				return err
