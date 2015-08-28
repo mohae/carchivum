@@ -4,8 +4,6 @@ package carchivum
 
 import (
 	"archive/tar"
-	_ "bufio"
-	"bytes"
 	"compress/bzip2"
 	"compress/gzip"
 	"compress/lzw"
@@ -19,7 +17,7 @@ import (
 	"time"
 
 	"github.com/MichaelTJones/walk"
-	lz4 "github.com/bkaradzic/go-lz4"
+	"github.com/pierrec/lz4"
 )
 
 // Tar is a struct for a tar, tape archive.
@@ -65,7 +63,6 @@ func (t *Tar) Create(dst string, src ...string) (cnt int, err error) {
 			err = cerr
 		}
 	}()
-
 	switch t.Format {
 	case GzipFmt:
 		err = t.CreateGzip(tball)
@@ -152,24 +149,9 @@ func (t *Tar) CreateZ(w io.Writer) (err error) {
 
 // CreateLZ4 creates a LZ4 compressed tarball using the passed writer.
 func (t *Tar) CreateLZ4(w io.Writer) (err error) {
-	// first create the tar in memory
-	var bw bytes.Buffer
-	err = t.writeTar(&bw)
-	if err != nil {
-		return err
-	}
-	//var compressed []byte
-	compressed, err := lz4.Encode(nil, bw.Bytes())
-	if err != nil {
-		return err
-	}
-
-	n, err := w.Write(compressed)
-	if err != nil {
-		log.Print(err)
-		return err
-	}
-	fmt.Println("Bytes compressed:", n)
+	lzW := lz4.NewWriter(w)
+	err = t.writeTar(lzW)
+	lzW.Close()
 	return err
 }
 
@@ -484,35 +466,12 @@ func (t *Tar) ExtractZ(src io.Reader, dst string) error {
 
 // ExtractLZ4 extracts LZ4 compressed tarballs.
 func (t *Tar) ExtractLZ4(src io.Reader, dst string) error {
-	return nil
+	lzR := lz4.NewReader(src)
+	tr := tar.NewReader(lzR)
+	err := t.ExtractTar(tr, dst)
+	return err
 }
 
-/*
-	zr := lz4.NewReader(src)
-
-	tr := tar.NewReader(zr)
-	//defer tr.Close()
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			break // break at eof
-		}
-		if err != nil {
-			log.Print(err)
-			return err
-		}
-		if hdr.Name == "." {
-			continue // skip .
-		}
-		err = extractTarFile(hdr, dst, tr)
-		if err != nil {
-			log.Print(err)
-			return err
-		}
-	}
-	return nil
-}
-*/
 func extractTarFile(hdr *tar.Header, dst string, in io.Reader) error {
 	fP := filepath.Join(dst, hdr.Name)
 	fI := hdr.FileInfo()
