@@ -23,7 +23,7 @@ import (
 // Tar is a struct for a tar, tape archive.
 type Tar struct {
 	Car
-	writer *tar.Writer
+	*tar.Writer
 	Format
 	sources []string
 }
@@ -156,9 +156,9 @@ func (t *Tar) CreateLZ4(w io.Writer) (err error) {
 }
 
 func (t *Tar) writeTar(w io.Writer) (err error) {
-	t.writer = tar.NewWriter(w)
+	t.Writer = tar.NewWriter(w)
 	defer func() {
-		cerr := t.writer.Close()
+		cerr := t.Writer.Close()
 		if cerr != nil && err == nil {
 			log.Print(cerr)
 			err = cerr
@@ -244,13 +244,13 @@ func (t *Tar) Write() (*sync.WaitGroup, error) {
 
 			header.ModTime = info.ModTime()
 
-			err = t.writer.WriteHeader(header)
+			err = t.Writer.WriteHeader(header)
 			if err != nil {
 				log.Print(err)
 				return err
 			}
 
-			_, err = io.Copy(t.writer, f)
+			_, err = io.Copy(t.Writer, f)
 			if err != nil {
 				log.Print(err)
 				return err
