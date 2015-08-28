@@ -472,7 +472,7 @@ func (t *Tar) ExtractLZ4(src io.Reader, dst string) error {
 	return err
 }
 
-func extractTarFile(hdr *tar.Header, dst string, in io.Reader) error {
+func extractTarFile(hdr *tar.Header, dst string, src io.Reader) error {
 	fP := filepath.Join(dst, hdr.Name)
 	fI := hdr.FileInfo()
 
@@ -495,7 +495,7 @@ func extractTarFile(hdr *tar.Header, dst string, in io.Reader) error {
 	}
 	defer dF.Close()
 
-	_, err = io.Copy(dF, in)
+	_, err = io.Copy(dF, src)
 	if err != nil {
 		log.Print(err)
 		return err
