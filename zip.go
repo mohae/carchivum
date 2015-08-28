@@ -36,14 +36,12 @@ func (z *Zip) Create(dst string, src ...string) (cnt int, err error) {
 		log.Print(err)
 		return 0, err
 	}
-
 	// If there aren't any sources, return err
 	if len(dst) == 0 {
 		err = fmt.Errorf("a source is required to create a zip archive")
 		log.Print(err)
 		return 0, err
 	}
-
 	// See if we can create the destination file before processing
 	z.File, err = os.OpenFile(dst, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
@@ -51,11 +49,9 @@ func (z *Zip) Create(dst string, src ...string) (cnt int, err error) {
 		return 0, err
 	}
 	defer z.File.Close()
-
 	buf := new(bytes.Buffer)
 	z.Writer = zip.NewWriter(buf)
 	defer z.Writer.Close()
-
 	// Set up the file queue and its drain.
 	z.FileCh = make(chan *os.File)
 	wait, err := z.write()
@@ -63,7 +59,6 @@ func (z *Zip) Create(dst string, src ...string) (cnt int, err error) {
 		log.Print(err)
 		return 0, err
 	}
-
 	var fullPath string
 	// Walk the sources, add each file to the queue.
 	// This isn't limited as a large number of sources is not expected.
@@ -71,7 +66,6 @@ func (z *Zip) Create(dst string, src ...string) (cnt int, err error) {
 	visitor := func(p string, fi os.FileInfo, err error) error {
 		return z.AddFile(fullPath, p, fi, err)
 	}
-
 	var wg sync.WaitGroup
 	wg.Add(len(src) - 1)
 	for _, source := range src {
@@ -81,28 +75,22 @@ func (z *Zip) Create(dst string, src ...string) (cnt int, err error) {
 			log.Print(err)
 			return 0, err
 		}
-
 		err = walk.Walk(fullPath, visitor)
 		if err != nil {
 			log.Print(err)
 			return 0, err
 		}
 	}
-
 	wg.Wait()
-
 	close(z.FileCh)
 	wait.Wait()
-
 	z.Writer.Close()
-
 	// Copy the zip
 	_, err = z.File.Write(buf.Bytes())
 	if err != nil {
 		log.Print(err)
 		return 0, err
 	}
-
 	z.File.Close()
 	z.setDelta()
 	return int(z.Car.files), nil
@@ -119,7 +107,6 @@ func ZipBytes(b []byte, name string) (n int, zipped []byte, err error) {
 		log.Print(err)
 		return 0, zipped, err
 	}
-
 	n, err = f.Write(b)
 	if err != nil {
 		log.Print(err)
@@ -135,7 +122,6 @@ func copyTo(w io.Writer, z *zip.File) (int64, error) {
 		return 0, err
 	}
 	defer f.Close()
-
 	return io.Copy(w, f)
 }
 
@@ -151,7 +137,6 @@ func (z *Zip) write() (*sync.WaitGroup, error) {
 	wg.Add(1)
 	go func() error {
 		defer wg.Done()
-
 		for f := range z.FileCh {
 			defer f.Close()
 			info, err := f.Stat()
@@ -159,36 +144,28 @@ func (z *Zip) write() (*sync.WaitGroup, error) {
 				log.Print(err)
 				return err
 			}
-
 			if info.IsDir() {
 				continue
 			}
-
 			header, err := zip.FileInfoHeader(info)
 			if err != nil {
 				log.Print(err)
 				return err
 			}
-
 			header.Name = f.Name()
-
 			fw, err := z.Writer.CreateHeader(header)
 			if err != nil {
 				log.Print(err)
 				return err
 			}
-
 			_, err = io.Copy(fw, f)
 			if err != nil {
 				log.Print(err)
 				return err
 			}
-
 		}
-
 		return nil
 	}()
-
 	return &wg, nil
 }
 
@@ -200,7 +177,6 @@ func (z *Zip) Extract(dst, src string) error {
 		return err
 	}
 	defer r.Close()
-
 	for _, f := range r.File {
 		rc, err := f.Open()
 		if err != nil {

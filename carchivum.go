@@ -71,56 +71,43 @@ var (
 // header information.
 func getFileFormat(r io.ReaderAt) (Format, error) {
 	h := make([]byte, 8, 8)
-
 	r.ReadAt(h, 0)
-
 	if bytes.Equal(headerGzip, h[0:2]) {
 		return GzipFmt, nil
 	}
-
 	if bytes.Equal(headerZip, h[0:4]) {
 		return ZipFmt, nil
 	}
-
 	if bytes.Equal(headerLZW, h[0:2]) {
 		return LZWFmt, nil
 	}
-
 	if bytes.Equal(headerLZ4, h[0:4]) {
 		return LZ4Fmt, nil
 	}
-
 	// partially supported
 	if bytes.Equal(headerBzip2, h[0:3]) {
 		return Bzip2Fmt, nil
 	}
-
 	// unsupported
 	if bytes.Equal(headerRAROld, h[0:7]) {
 		return UnsupportedFmt, RAROldFmt.NotSupportedError()
 	}
-
 	if bytes.Equal(headerRAR, h[0:8]) {
 		return UnsupportedFmt, RARFmt.NotSupportedError()
 	}
-
 	if bytes.Equal(headerZipEmpty, h[0:4]) {
 		return UnsupportedFmt, ZipEmptyFmt.NotSupportedError()
 	}
-
 	if bytes.Equal(headerZipSpanned, h[0:4]) {
 		return UnsupportedFmt, ZipSpannedFmt.NotSupportedError()
 	}
-
 	if bytes.Equal(headerLZH, h[0:2]) {
 		return UnsupportedFmt, LZHFmt.NotSupportedError()
 	}
-
 	r.ReadAt(h, 257)
 	if bytes.Equal(headerTar1, h) || bytes.Equal(headerTar2, h) {
 		return TarFmt, nil
 	}
-
 	return UnsupportedFmt, UnsupportedFmt.NotSupportedError()
 }
 
@@ -200,42 +187,35 @@ var CPUMultiplier = 4
 // Car is a Compressed Archive. The struct holds information about Cars and
 // their processing.
 type Car struct {
-
 	// This lock structure is  not used for walk/file channel related
 	// things. As this structure's use was expanded from statistics
 	// tracking to providing access to delete structures, its usage and
 	// coverage isn't as good as it should be, but it is improving.
 	lock sync.Mutex
-
 	// Name of the archive, this includes path information, if any.
 	Name        string
 	UseLongExt  bool
 	UseFullpath bool
-
 	// Create operation modifiers
 	Owner int
 	Group int
 	Mode  os.FileMode
-
 	// Extract operation modifiers
 
 	// Local file selection
 	// List of files to delete if applicable.
 	deleteList     []string
 	DeleteArchived bool
-
 	// Exclude file processing
 	Exclude         string
 	ExcludeExt      []string
 	ExcludeExtCount int
 	ExcludeAnchored string
-
 	// Include file processing
 	Include         string
 	IncludeExt      []string
 	IncludeExtCount int
 	IncludeAnchored string
-
 	// File time format handling
 	Newer      string
 	NewerMTime time.Time
@@ -244,15 +224,12 @@ type Car struct {
 
 	// Output format for time
 	outputNameTimeFormat string
-
 	// Processing queue
 	FileCh chan *os.File
-
 	// Other Counters
 	files           int32
 	bytes           int64
 	compressedBytes int64
-
 	// timer
 	t0 time.Time
 	𝛥t float64
@@ -282,7 +259,6 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 	if !process {
 		return nil
 	}
-
 	// Check path information to see if this should be added to archive
 	process, err = c.filterPath(root, p)
 	if err != nil {
@@ -291,40 +267,32 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 	if !process {
 		return nil
 	}
-
 	var relPath string
 	relPath, err = filepath.Rel(root, p)
 	if err != nil {
 		log.Print(err)
 		return err
 	}
-
 	if relPath == "," {
 		return nil
 	}
-
 	fullpath := p
 	if !c.UseFullpath {
 		p = filepath.Join(filepath.Base(root), relPath)
 	}
-
 	f, err := os.Open(p)
 	if err != nil {
 		log.Print(err)
 		return err
 	}
-
 	c.lock.Lock()
 	c.files++
 	c.bytes += fi.Size()
-
 	if c.DeleteArchived {
 		c.deleteList = append(c.deleteList, fullpath)
 	}
-
 	c.FileCh <- f
 	c.lock.Unlock()
-
 	return nil
 }
 
@@ -334,13 +302,11 @@ func (c *Car) filterFileInfo(fi os.FileInfo) (bool, error) {
 	if fi.Mode()&os.ModeSymlink == os.ModeSymlink {
 		return false, nil
 	}
-
 	if c.NewerMTime != unsetTime {
 		if !fi.ModTime().After(c.NewerMTime) {
 			return false, nil
 		}
 	}
-
 	return true, nil
 }
 
@@ -348,7 +314,6 @@ func (c *Car) filterPath(root, p string) (bool, error) {
 	if strings.HasSuffix(root, p) {
 		return false, nil
 	}
-
 	b, err := c.includeFile(root, p)
 	if err != nil {
 		return false, err
@@ -356,7 +321,6 @@ func (c *Car) filterPath(root, p string) (bool, error) {
 	if !b {
 		return false, nil
 	}
-
 	b, err = c.excludeFile(root, p)
 	if err != nil {
 		return false, err
@@ -364,7 +328,6 @@ func (c *Car) filterPath(root, p string) (bool, error) {
 	if b {
 		return false, nil
 	}
-
 	return true, nil
 }
 
@@ -374,7 +337,6 @@ func (c *Car) includeFile(root, p string) (bool, error) {
 			return true, nil
 		}
 	}
-
 	// since we are just evaluating a file, we use match and look at the
 	// fullpath
 	if c.Include != "" {
@@ -387,7 +349,6 @@ func (c *Car) includeFile(root, p string) (bool, error) {
 			return true, nil
 		}
 	}
-
 	if c.IncludeExtCount > 0 {
 		for _, ext := range c.IncludeExt {
 			if strings.HasSuffix(filepath.Base(p), "."+ext) {
@@ -396,7 +357,6 @@ func (c *Car) includeFile(root, p string) (bool, error) {
 		}
 		return false, nil
 	}
-
 	return true, nil
 }
 
@@ -406,7 +366,6 @@ func (c *Car) excludeFile(root, p string) (bool, error) {
 			return true, nil
 		}
 	}
-
 	// since we are just evaluating a file, we use match and look at the
 	// fullpath
 	if c.Exclude != "" {
@@ -419,7 +378,6 @@ func (c *Car) excludeFile(root, p string) (bool, error) {
 			return true, nil
 		}
 	}
-
 	if c.ExcludeExtCount != 0 {
 		for _, ext := range c.ExcludeExt {
 			if strings.HasSuffix(filepath.Base(p), "."+ext) {
@@ -427,7 +385,6 @@ func (c *Car) excludeFile(root, p string) (bool, error) {
 			}
 		}
 	}
-
 	return false, nil
 }
 
@@ -449,7 +406,6 @@ func Extract(src, dst string) error {
 		log.Print(err)
 		return err
 	}
-
 	// if dst != "" see if it exists. If it doesn't create it
 	if dst != "" {
 		fi, err := os.Stat(dst)
@@ -536,7 +492,6 @@ func ParseFormat(s string) (Format, error) {
 	case "zip":
 		return ZipFmt, nil
 	}
-
 	return UnsupportedFmt, UnsupportedFmt.NotSupportedError()
 }
 
@@ -567,7 +522,6 @@ func getFileParts(s string) (dir, filename, ext string, err error) {
 		ext := parts[l-1]
 		return dir, filename, ext, nil
 	}
-
 	err = fmt.Errorf("unable to determine destination filename and extension")
 	log.Print(err)
 	return dir, filename, ext, err
@@ -578,8 +532,6 @@ func Push() error {
 		User: "asd",
 		Auth: []ssh.AuthMethod{ssh.Password("asd")},
 	}
-
 	_ = cfg
-
 	return nil
 }
