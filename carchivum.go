@@ -473,7 +473,7 @@ typeSwitch:
 	switch typ {
 	case TarFmt:
 		tar := NewTar()
-		err := tar.ExtractTar(f, dst)
+		err := tar.ExtractTar(dst, f)
 		if err != nil {
 			log.Print(err)
 			return err
@@ -483,35 +483,35 @@ typeSwitch:
 		// TODO change it so zip expected a reader
 		f.Close()
 		zip := NewZip()
-		err := zip.Extract(src, dst)
+		err := zip.Extract(dst, src)
 		if err != nil {
 			log.Print(err)
 			return err
 		}
 	case GzipFmt:
 		tar := NewTar()
-		err := tar.ExtractGzip(f, dst)
+		err := tar.ExtractGzip(dst, f)
 		if err != nil {
 			log.Print(err)
 			return err
 		}
 	case Bzip2Fmt:
 		tar := NewTar()
-		err := tar.ExtractTbz(f, dst)
+		err := tar.ExtractTbz(dst, f)
 		if err != nil {
 			log.Print(err)
 			return err
 		}
 	case LZWFmt:
 		tar := NewTar()
-		err := tar.ExtractZ(f, dst)
+		err := tar.ExtractZ(dst, f)
 		if err != nil {
 			log.Print(err)
 			return err
 		}
 	case LZ4Fmt:
 		tar := NewTar()
-		err := tar.ExtractLZ4(f, dst)
+		err := tar.ExtractLZ4(dst, f)
 		if err != nil {
 			log.Print(err)
 			return err

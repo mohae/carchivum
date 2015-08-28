@@ -273,16 +273,16 @@ func (t *Tar) Delete() error {
 }
 
 // Extract extracts the files from src and writes them to the dst.
-func (t *Tar) Extract(src io.Reader, dst string) error {
+func (t *Tar) Extract(dst string, src io.Reader) error {
 	switch t.Format {
 	case GzipFmt:
-		return t.ExtractTgz(src, dst)
+		return t.ExtractTgz(dst, src)
 	case Bzip2Fmt:
-		return t.ExtractTbz(src, dst)
+		return t.ExtractTbz(dst, src)
 	case LZWFmt:
-		return t.ExtractZ(src, dst)
+		return t.ExtractZ(dst, src)
 	case LZ4Fmt:
-		return t.ExtractLZ4(src, dst)
+		return t.ExtractLZ4(dst, src)
 	default:
 		return UnsupportedFmt.NotSupportedError()
 	}
@@ -290,8 +290,8 @@ func (t *Tar) Extract(src io.Reader, dst string) error {
 }
 
 // ExtractTar extracts a tar file using the passed reader
-func (t *Tar) ExtractTar(r io.Reader, dst string) (err error) {
-	tr := tar.NewReader(r)
+func (t *Tar) ExtractTar(dst string, src io.Reader) (err error) {
+	tr := tar.NewReader(src)
 
 	for {
 		header, err := tr.Next()
@@ -355,8 +355,8 @@ func (t *Tar) ExtractTar(r io.Reader, dst string) (err error) {
 }
 
 // ExtractGzip reads a GZip using the passed reader.
-func (t *Tar) ExtractGzip(r io.Reader, dst string) (err error) {
-	gr, err := gzip.NewReader(r)
+func (t *Tar) ExtractGzip(dst string, src io.Reader) (err error) {
+	gr, err := gzip.NewReader(src)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -371,12 +371,12 @@ func (t *Tar) ExtractGzip(r io.Reader, dst string) (err error) {
 		}
 	}()
 
-	err = t.ExtractTar(gr, dst)
+	err = t.ExtractTar(dst, gr)
 	return err
 }
 
 // ExtractTgz extracts GZip'd tarballs.
-func (t *Tar) ExtractTgz(src io.Reader, dst string) error {
+func (t *Tar) ExtractTgz(dst string, src io.Reader) error {
 	gr, err := gzip.NewReader(src)
 	if err != nil {
 		log.Print(err)
@@ -408,7 +408,7 @@ func (t *Tar) ExtractTgz(src io.Reader, dst string) error {
 }
 
 // ExtractTbz extracts Bzip2 compressed tarballs.
-func (t *Tar) ExtractTbz(src io.Reader, dst string) error {
+func (t *Tar) ExtractTbz(dst string, src io.Reader) error {
 	zr := bzip2.NewReader(src)
 
 	tr := tar.NewReader(zr)
@@ -437,7 +437,7 @@ func (t *Tar) ExtractTbz(src io.Reader, dst string) error {
 // ExtractZ extracts tarballs compressed with LZW, typically .Z extension.
 // TODO fix so that order and width get properly set. Assuming order isn't
 // good.
-func (t *Tar) ExtractZ(src io.Reader, dst string) error {
+func (t *Tar) ExtractZ(dst string, src io.Reader) error {
 	zr := lzw.NewReader(src, lzw.LSB, 8)
 	defer zr.Close()
 
@@ -465,10 +465,10 @@ func (t *Tar) ExtractZ(src io.Reader, dst string) error {
 }
 
 // ExtractLZ4 extracts LZ4 compressed tarballs.
-func (t *Tar) ExtractLZ4(src io.Reader, dst string) error {
+func (t *Tar) ExtractLZ4(dst string, src io.Reader) error {
 	lzR := lz4.NewReader(src)
 	tr := tar.NewReader(lzR)
-	err := t.ExtractTar(tr, dst)
+	err := t.ExtractTar(dst, tr)
 	return err
 }
 

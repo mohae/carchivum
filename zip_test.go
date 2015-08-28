@@ -57,7 +57,7 @@ func TestZip(t *testing.T) {
 	eDir := filepath.Join(tmpDir, "extract")
 	err = os.Mkdir(eDir, 0755)
 	assert.Nil(t, err)
-	err = newZ.Extract(name, eDir)
+	err = newZ.Extract(eDir, name)
 	assert.Nil(t, err)
 	fB, err := ioutil.ReadFile(filepath.Join(eDir, "test/test1.txt"))
 	assert.Nil(t, err)
