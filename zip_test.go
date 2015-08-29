@@ -42,14 +42,14 @@ func TestZip(t *testing.T) {
 	tmpDir, err := CreateTempFiles()
 	assert.Nil(t, err)
 	newZ := NewZip()
-	name := filepath.Join(tmpDir, "test.zip")
+	newZ.Car.Name = filepath.Join(tmpDir, "test.zip")
 	// Test Create
 	zDir := filepath.Join(tmpDir, "test")
-	cnt, err := newZ.Create(name, zDir)
+	cnt, err := newZ.Create(zDir)
 	assert.Nil(t, err)
 	assert.Equal(t, 5, cnt)
 	// Check the created file
-	fi, err := os.Stat(name)
+	fi, err := os.Stat(newZ.Car.Name)
 	assert.Nil(t, err)
 	assert.Equal(t, 594, fi.Size())
 
@@ -57,7 +57,7 @@ func TestZip(t *testing.T) {
 	eDir := filepath.Join(tmpDir, "extract")
 	err = os.Mkdir(eDir, 0755)
 	assert.Nil(t, err)
-	err = newZ.Extract(eDir, name)
+	err = newZ.Extract(eDir, newZ.Car.Name)
 	assert.Nil(t, err)
 	fB, err := ioutil.ReadFile(filepath.Join(eDir, "test/test1.txt"))
 	assert.Nil(t, err)

@@ -14,13 +14,13 @@ func TestGzipTar(t *testing.T) {
 	assert.Nil(t, err)
 	newT := NewTar()
 	newT.Format = GzipFmt
-	tarName := filepath.Join(tmpDir, "test.tgz")
+	newT.Name = filepath.Join(tmpDir, "test.tgz")
 	// Test CreateTar
-	cnt, err := newT.Create(tarName, filepath.Join(tmpDir, "test"))
+	cnt, err := newT.Create(newT.Name, filepath.Join(tmpDir, "test"))
 	assert.Nil(t, err)
 	assert.Equal(t, 5, cnt)
 	// Check the created tarfile
-	tFi, err := os.Stat(tarName)
+	tFi, err := os.Stat(newT.Name)
 	assert.Nil(t, err)
 	// check range because the returned size can vary by a few bytes.
 	if tFi.Size() < 230 || tFi.Size() > 236 {
@@ -28,7 +28,7 @@ func TestGzipTar(t *testing.T) {
 	}
 
 	// Test Extract T ar
-	srcF, err := os.Open(tarName)
+	srcF, err := os.Open(newT.Name)
 	assert.Nil(t, err)
 	defer srcF.Close()
 	err = newT.Extract(filepath.Join(tmpDir, "tmp"), srcF)
@@ -57,20 +57,20 @@ func TestZTar(t *testing.T) {
 	assert.Nil(t, err)
 	newT := NewTar()
 	newT.Format = LZWFmt
-	tarName := filepath.Join(tmpDir, "test.tz2")
+	newT.Name = filepath.Join(tmpDir, "test.tz2")
 	// Test CreateTar
-	cnt, err := newT.Create(tarName, filepath.Join(tmpDir, "test"))
+	cnt, err := newT.Create(filepath.Join(tmpDir, "test"))
 	assert.Nil(t, err)
 	assert.Equal(t, 5, cnt)
 	// Check the created tarfile
-	tFi, err := os.Stat(tarName)
+	tFi, err := os.Stat(newT.Name)
 	assert.Nil(t, err)
 	// check range because the returned size can vary by a few bytes.
 	if tFi.Size() < 410 || tFi.Size() > 430 {
 		t.Errorf("Expected Filesize to be 420 +- 10 bytes, got %d", tFi.Size())
 	}
 	// Test Extract T ar
-	srcF, err := os.Open(tarName)
+	srcF, err := os.Open(newT.Name)
 	assert.Nil(t, err)
 	defer srcF.Close()
 	err = newT.Extract(filepath.Join(tmpDir, "tmp"), srcF)

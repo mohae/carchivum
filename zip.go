@@ -29,21 +29,21 @@ func NewZip() *Zip {
 }
 
 // Create creates a zip file from src in the dst
-func (z *Zip) Create(dst string, src ...string) (cnt int, err error) {
+func (z *Zip) Create(src ...string) (cnt int, err error) {
 	// If there isn't a destination, return err
-	if dst == "" {
+	if z.Car.Name == "" {
 		err = fmt.Errorf("destination required to create a zip archive")
 		log.Print(err)
 		return 0, err
 	}
 	// If there aren't any sources, return err
-	if len(dst) == 0 {
+	if len(src) == 0 {
 		err = fmt.Errorf("a source is required to create a zip archive")
 		log.Print(err)
 		return 0, err
 	}
 	// See if we can create the destination file before processing
-	z.File, err = os.OpenFile(dst, os.O_RDWR|os.O_CREATE, 0666)
+	z.File, err = os.OpenFile(z.Car.Name, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		log.Print(err)
 		return 0, err
@@ -62,7 +62,6 @@ func (z *Zip) Create(dst string, src ...string) (cnt int, err error) {
 	var fullPath string
 	// Walk the sources, add each file to the queue.
 	// This isn't limited as a large number of sources is not expected.
-	//
 	visitor := func(p string, fi os.FileInfo, err error) error {
 		return z.AddFile(fullPath, p, fi, err)
 	}

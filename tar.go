@@ -34,9 +34,9 @@ func NewTar() *Tar {
 }
 
 // Create creates a tarfile from the passed src('s) and saves it to the dst.
-func (t *Tar) Create(dst string, src ...string) (cnt int, err error) {
+func (t *Tar) Create(src ...string) (cnt int, err error) {
 	// If there isn't a destination, return err
-	if dst == "" {
+	if t.Name == "" {
 		err = fmt.Errorf("destination required to create a tar archive")
 		log.Print(err)
 		return 0, err
@@ -49,7 +49,7 @@ func (t *Tar) Create(dst string, src ...string) (cnt int, err error) {
 	}
 	t.sources = src
 	// See if we can create the destination file before processing
-	tball, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE, 0744)
+	tball, err := os.OpenFile(t.Name, os.O_RDWR|os.O_CREATE, 0744)
 	if err != nil {
 		log.Print(err)
 		return 0, err
