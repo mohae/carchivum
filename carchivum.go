@@ -42,6 +42,10 @@ const (
 	RAROldFmt                    // Rar pre 1.5 compression
 )
 
+func init() {
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+}
+
 // Format is a type for file format constants.
 type (
 	Format int
