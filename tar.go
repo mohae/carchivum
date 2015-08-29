@@ -87,7 +87,6 @@ func (t *Tar) Create(dst string, src ...string) (cnt int, err error) {
 		err = fmt.Errorf("Unsupported compression format: %s", t.Format.String())
 		return 0, err
 	}
-
 	if t.DeleteArchived {
 		err := t.removeFiles()
 		if err != nil {
@@ -252,6 +251,8 @@ func (t *Tar) Delete() error {
 // Extract extracts the files from src and writes them to the dst.
 func (t *Tar) Extract(dst string, src io.Reader) error {
 	switch t.Format {
+	case TarFmt:
+		return t.ExtractTar(dst, src)
 	case GzipFmt:
 		return t.ExtractTgz(dst, src)
 	case Bzip2Fmt:
@@ -330,20 +331,20 @@ func (t *Tar) ExtractTar(dst string, src io.Reader) (err error) {
 
 // ExtractGzip reads a GZip using the passed reader.
 func (t *Tar) ExtractGzip(dst string, src io.Reader) (err error) {
-	gr, err := gzip.NewReader(src)
+	gR, err := gzip.NewReader(src)
 	if err != nil {
 		log.Print(err)
 		return err
 	}
 	// Close the file with error handling
 	defer func() {
-		cerr := gr.Close()
+		cerr := gR.Close()
 		if cerr != nil && err == nil {
 			log.Print(cerr)
 			err = cerr
 		}
 	}()
-	err = t.ExtractTar(dst, gr)
+	err = t.ExtractTar(dst, gR)
 	return err
 }
 
@@ -355,82 +356,23 @@ func (t *Tar) ExtractTgz(dst string, src io.Reader) error {
 		return err
 	}
 	defer gr.Close()
-	tr := tar.NewReader(gr)
-	//defer tr.Close()
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			break // break at eof
-		}
-		if err != nil {
-			log.Print(err)
-			return err
-		}
-		if hdr.Name == "." {
-			continue // skip .
-		}
-		err = extractTarFile(hdr, dst, tr)
-		if err != nil {
-			log.Print(err)
-			return err
-		}
-	}
-	return nil
+	err = t.ExtractTar(dst, gr)
+	return err
 }
 
 // ExtractTbz extracts Bzip2 compressed tarballs.
 func (t *Tar) ExtractTbz(dst string, src io.Reader) error {
-	zr := bzip2.NewReader(src)
-	tr := tar.NewReader(zr)
-	//defer tr.Close()
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			break // break at eof
-		}
-		if err != nil {
-			log.Print(err)
-			return err
-		}
-		if hdr.Name == "." {
-			continue // skip .
-		}
-		err = extractTarFile(hdr, dst, tr)
-		if err != nil {
-			log.Print(err)
-			return err
-		}
-	}
-	return nil
+	zR := bzip2.NewReader(src)
+	return t.ExtractTar(dst, zR)
 }
 
 // ExtractZ extracts tarballs compressed with LZW, typically .Z extension.
 // TODO fix so that order and width get properly set. Assuming order isn't
 // good.
 func (t *Tar) ExtractZ(dst string, src io.Reader) error {
-	zr := lzw.NewReader(src, lzw.LSB, 8)
-	defer zr.Close()
-	tr := tar.NewReader(zr)
-	//defer tr.Close()
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			break // break at eof
-		}
-		if err != nil {
-			log.Print(err)
-			return err
-		}
-		if hdr.Name == "." {
-			continue // skip .
-		}
-		err = extractTarFile(hdr, dst, tr)
-		if err != nil {
-			log.Print(err)
-			return err
-		}
-	}
-	return nil
+	zR := lzw.NewReader(src, lzw.LSB, 8)
+	defer zR.Close()
+	return t.ExtractTar(dst, zR)
 }
 
 // ExtractLZ4 extracts LZ4 compressed tarballs.

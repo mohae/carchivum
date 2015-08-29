@@ -396,13 +396,13 @@ func Extract(src, dst string) error {
 		return err
 	}
 	// find its format
-	typ, err := getFileFormat(f)
+	format, err := getFileFormat(f)
 	if err != nil {
 		log.Print(err)
 		return err
 	}
-	if typ == UnsupportedFmt {
-		err := fmt.Errorf("%s: %s is not a supported format", src, typ.String())
+	if format == UnsupportedFmt {
+		err := fmt.Errorf("%s: %s is not a supported format", src, format.String())
 		log.Print(err)
 		return err
 	}
@@ -426,15 +426,7 @@ func Extract(src, dst string) error {
 	}
 
 typeSwitch:
-	switch typ {
-	case TarFmt:
-		tar := NewTar()
-		err := tar.ExtractTar(dst, f)
-		if err != nil {
-			log.Print(err)
-			return err
-		}
-	case ZipFmt:
+	if format == ZipFmt {
 		// Close for now, since Extract expects src and dst name
 		// TODO change it so zip expected a reader
 		f.Close()
@@ -442,38 +434,16 @@ typeSwitch:
 		err := zip.Extract(dst, src)
 		if err != nil {
 			log.Print(err)
-			return err
 		}
-	case GzipFmt:
-		tar := NewTar()
-		err := tar.ExtractGzip(dst, f)
-		if err != nil {
-			log.Print(err)
-			return err
-		}
-	case Bzip2Fmt:
-		tar := NewTar()
-		err := tar.ExtractTbz(dst, f)
-		if err != nil {
-			log.Print(err)
-			return err
-		}
-	case LZWFmt:
-		tar := NewTar()
-		err := tar.ExtractZ(dst, f)
-		if err != nil {
-			log.Print(err)
-			return err
-		}
-	case LZ4Fmt:
-		tar := NewTar()
-		err := tar.ExtractLZ4(dst, f)
-		if err != nil {
-			log.Print(err)
-			return err
-		}
+		return err
 	}
-	return nil
+	tar := NewTar()
+	tar.Format = format
+	err = tar.Extract(dst, f)
+	if err != nil {
+		log.Print(err)
+	}
+	return err
 }
 
 // ParseFormat takes a string and returns the
