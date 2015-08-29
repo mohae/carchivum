@@ -187,11 +187,7 @@ var CPUMultiplier = 4
 // Car is a Compressed Archive. The struct holds information about Cars and
 // their processing.
 type Car struct {
-	// This lock structure is  not used for walk/file channel related
-	// things. As this structure's use was expanded from statistics
-	// tracking to providing access to delete structures, its usage and
-	// coverage isn't as good as it should be, but it is improving.
-	lock sync.Mutex
+	sync.Mutex
 	// Name of the archive, this includes path information, if any.
 	Name        string
 	UseLongExt  bool
@@ -199,7 +195,7 @@ type Car struct {
 	// Create operation modifiers
 	Owner int
 	Group int
-	Mode  os.FileMode
+	os.FileMode
 	// Extract operation modifiers
 
 	// Local file selection
@@ -285,14 +281,14 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 		log.Print(err)
 		return err
 	}
-	c.lock.Lock()
+	c.Mutex.Lock()
 	c.files++
 	c.bytes += fi.Size()
 	if c.DeleteArchived {
 		c.deleteList = append(c.deleteList, fullpath)
 	}
 	c.FileCh <- f
-	c.lock.Unlock()
+	c.Mutex.Unlock()
 	return nil
 }
 

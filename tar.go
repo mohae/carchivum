@@ -216,8 +216,8 @@ func (t *Tar) Write() (*sync.WaitGroup, error) {
 			if t.Group > 0 {
 				header.Gid = t.Group
 			}
-			if t.Mode > 0 {
-				header.Mode = int64(t.Mode)
+			if t.FileMode > 0 {
+				header.Mode = int64(t.FileMode)
 			} else {
 				header.Mode = int64(info.Mode().Perm())
 			}
