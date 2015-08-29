@@ -126,36 +126,37 @@ func (f Format) String() string {
 	case Bzip2Fmt:
 		return "bzip2"
 	case LZHFmt:
-		return "LZH"
+		return "lzh"
 	case LZWFmt:
-		return "LZW"
+		return "lzw"
 	case LZ4Fmt:
-		return "LZ4"
+		return "lz4"
 	case RARFmt:
-		return "RAR post 5.0"
+		return "rar post 5.0"
 	case RAROldFmt:
-		return "RAR pre 1.5"
+		return "rar pre 1.5"
 	}
 	return "unsupported"
 }
 
 func FormatFromString(s string) Format {
+	s = strings.ToLower(s)
 	switch s {
-	case "gzip", "GZIP":
+	case "gzip":
 		return GzipFmt
-	case "tar", "TAR":
+	case "tar":
 		return TarFmt
-	case "zip", "ZIP":
+	case "zip":
 		return ZipFmt
-	case "bzip2", "BZIP2":
+	case "bzip2":
 		return Bzip2Fmt
-	case "lzh", "LZH":
+	case "lzh":
 		return LZHFmt
-	case "lzw", "LZW":
+	case "lzw":
 		return LZWFmt
-	case "lz4", "LZ4":
+	case "lz4":
 		return LZ4Fmt
-	case "rar", "RAR":
+	case "rar":
 		return RARFmt
 	}
 	return UnsupportedFmt
