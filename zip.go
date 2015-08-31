@@ -168,8 +168,9 @@ func (z *Zip) write() (*sync.WaitGroup, error) {
 	return &wg, nil
 }
 
-// Extract the content of src, a zip archive, to dst.
-func (z *Zip) Extract(dst string) error {
+// Extract the content of src, a zip archive. The destination is CWD, unless
+// OutputDir is specified; then it will be a child of the output dir.
+func (z *Zip) Extract() error {
 	r, err := zip.OpenReader(z.Car.Name)
 	if err != nil {
 		log.Print(err)
@@ -182,12 +183,12 @@ func (z *Zip) Extract(dst string) error {
 			log.Print(err)
 			return err
 		}
-		err = os.MkdirAll(filepath.Join(dst, filepath.Dir(f.Name)), 0755)
+		err = os.MkdirAll(filepath.Join(z.OutDir, filepath.Dir(f.Name)), 0755)
 		if err != nil {
 			log.Print(err)
 			return err
 		}
-		dF, err := os.Create(filepath.Join(dst, f.Name))
+		dF, err := os.Create(filepath.Join(z.OutDir, f.Name))
 		if err != nil {
 			log.Print(err)
 			return err
