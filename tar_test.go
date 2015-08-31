@@ -31,7 +31,7 @@ func TestGzipTar(t *testing.T) {
 	srcF, err := os.Open(newT.Name)
 	assert.Nil(t, err)
 	defer srcF.Close()
-	err = newT.Extract(filepath.Join(tmpDir, "tmp"), srcF)
+	err = newT.Extract(filepath.Join(srcF)
 	assert.Nil(t, err)
 	// see that the extracte files are there and are as expected.
 	eDir := filepath.Join(tmpDir, "tmp")
@@ -73,7 +73,7 @@ func TestZTar(t *testing.T) {
 	srcF, err := os.Open(newT.Name)
 	assert.Nil(t, err)
 	defer srcF.Close()
-	err = newT.Extract(filepath.Join(tmpDir, "tmp"), srcF)
+	err = newT.Extract(srcF)
 	assert.Nil(t, err)
 	// see that the extracte files are there and are as expected.
 	eDir := filepath.Join(tmpDir, "tmp")

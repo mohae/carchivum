@@ -389,7 +389,7 @@ func (c *Car) excludeFile(root, p string) (bool, error) {
 	return false, nil
 }
 
-func Extract(src, dst string) error {
+func Extract(src string) error {
 	// determine the type of archive
 	f, err := os.Open(src)
 	if err != nil {
@@ -407,32 +407,12 @@ func Extract(src, dst string) error {
 		log.Print(err)
 		return err
 	}
-	// if dst != "" see if it exists. If it doesn't create it
-	if dst != "" {
-		fi, err := os.Stat(dst)
-		if err != nil {
-			// wasn't found make it
-			err := os.MkdirAll(dst, 0744)
-			if err != nil {
-				log.Print(err)
-				return err
-			}
-			goto typeSwitch
-		}
-		if !fi.IsDir() {
-			err := fmt.Errorf("cannot extract to %q: not a directory", dst)
-			log.Print(err)
-			return err
-		}
-	}
-
-typeSwitch:
 	if format == ZipFmt {
 		// Close for now, since Extract expects src and dst name
 		// TODO change it so zip expected a reader
 		f.Close()
 		zip := NewZip()
-		err := zip.Extract(dst, src)
+		err := zip.Extract(src)
 		if err != nil {
 			log.Print(err)
 		}
@@ -440,7 +420,7 @@ typeSwitch:
 	}
 	tar := NewTar()
 	tar.Format = format
-	err = tar.Extract(dst, f)
+	err = tar.Extract(f)
 	if err != nil {
 		log.Print(err)
 	}
