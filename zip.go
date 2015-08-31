@@ -22,9 +22,9 @@ type Zip struct {
 }
 
 // NewZip returns an initialized Zip struct ready for use.
-func NewZip() *Zip {
+func NewZip(n string) *Zip {
 	return &Zip{
-		Car: Car{t0: time.Now()},
+		Car: Car{Name: n, t0: time.Now()},
 	}
 }
 

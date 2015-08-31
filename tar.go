@@ -29,8 +29,8 @@ type Tar struct {
 }
 
 // NewTar returns an initialized Tar struct ready for use.
-func NewTar() *Tar {
-	return &Tar{Car: Car{t0: time.Now()}, Format: defaultFormat, sources: []string{}}
+func NewTar(n string) *Tar {
+	return &Tar{Car: Car{Name: n, t0: time.Now()}, Format: defaultFormat, sources: []string{}}
 }
 
 // Create creates a tarfile from the passed src('s) and saves it to the dst.
