@@ -194,9 +194,8 @@ var CPUMultiplier = 4
 type Car struct {
 	sync.Mutex
 	// Name of the archive, this includes path information, if any.
-	Name        string
-	UseLongExt  bool
-	UseFullpath bool
+	Name       string
+	UseLongExt bool
 	// Create operation modifiers
 	Owner int
 	Group int
