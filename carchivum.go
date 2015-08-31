@@ -196,6 +196,7 @@ type Car struct {
 	// Name of the archive, this includes path information, if any.
 	Name       string
 	UseLongExt bool
+	OutDir     string
 	// Create operation modifiers
 	Owner int
 	Group int
@@ -228,6 +229,7 @@ type Car struct {
 	FileCh chan *os.File
 	// Other Counters
 	files           int32
+	dirs            int32
 	bytes           int64
 	compressedBytes int64
 	// timer
