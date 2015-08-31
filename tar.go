@@ -168,8 +168,6 @@ func (t *Tar) writeTar(w io.Writer) (err error) {
 	visitor := func(p string, fi os.FileInfo, err error) error {
 		return t.AddFile(fullPath, p, fi, err)
 	}
-	var wg sync.WaitGroup
-	wg.Add(len(t.sources) - 1)
 	for _, source := range t.sources {
 		fullPath, err = filepath.Abs(source)
 		if err != nil {
@@ -182,7 +180,6 @@ func (t *Tar) writeTar(w io.Writer) (err error) {
 			return err
 		}
 	}
-	wg.Wait()
 	close(t.FileCh)
 	wait.Wait()
 	return err
