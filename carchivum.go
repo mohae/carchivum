@@ -390,7 +390,10 @@ func (c *Car) excludeFile(root, p string) (bool, error) {
 	return false, nil
 }
 
-func Extract(src string) error {
+// Extract can handle the processing and extraction of a source file. Dst is
+// the destination directory of the output, if a location other than the CWD
+// is desired.
+func Extract(dst, src string) error {
 	// determine the type of archive
 	f, err := os.Open(src)
 	if err != nil {
@@ -412,14 +415,16 @@ func Extract(src string) error {
 		// Close for now, since Extract expects src and dst name
 		// TODO change it so zip expected a reader
 		f.Close()
-		zip := NewZip()
-		err := zip.Extract(src)
+		zip := NewZip(src)
+		zip.OutDir = dst
+		err := zip.Extract()
 		if err != nil {
 			log.Print(err)
 		}
 		return err
 	}
-	tar := NewTar()
+	tar := NewTar(src)
+	tar.OutDir = dst
 	tar.Format = format
 	err = tar.Extract(f)
 	if err != nil {
