@@ -245,8 +245,27 @@ func (t *Tar) Delete() error {
 	return nil
 }
 
-// Extract extracts the files from src and writes them to the dst.
-func (t *Tar) Extract(src io.Reader) error {
+// Extract extracts the files from the src and writes them to the dst. The src
+// is either a tar or a compressed tar.
+func (t *Tar) Extract() error {
+	// find its format
+	format, err := getFileFormat(f)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	defer f.Close()
+	tar := NewTar(src)
+	tar.OutDir = dst
+	tar.Format = format
+	err = tar.ExtractArchive(f)
+	if err != nil {
+		log.Print(err)
+	}
+	return err
+}
+
+func (t *Tar) ExtractArchive(src io.Reader) error {
 	switch t.Format {
 	case TarFmt:
 		return t.ExtractTar(src)
