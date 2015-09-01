@@ -392,7 +392,7 @@ func (c *Car) excludeFile(root, p string) (bool, error) {
 
 // Extract can handle the processing and extraction of a source file. Dst is
 // the destination directory of the output, if a location other than the CWD
-// is desired.
+// is desired. The source file can be a zip, tar, or compressed tar.
 func Extract(dst, src string) error {
 	// determine the type of archive
 	f, err := os.Open(src)
