@@ -248,17 +248,20 @@ func (t *Tar) Delete() error {
 // Extract extracts the files from the src and writes them to the dst. The src
 // is either a tar or a compressed tar.
 func (t *Tar) Extract() error {
+	// open the file
+	f, err := os.Open(t.Name)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
 	// find its format
-	format, err := getFileFormat(f)
+	t.Format, err = getFileFormat(f)
 	if err != nil {
 		log.Print(err)
 		return err
 	}
 	defer f.Close()
-	tar := NewTar(src)
-	tar.OutDir = dst
-	tar.Format = format
-	err = tar.ExtractArchive(f)
+	err = t.ExtractArchive(f)
 	if err != nil {
 		log.Print(err)
 	}
@@ -299,7 +302,7 @@ func (t *Tar) ExtractTar(src io.Reader) (err error) {
 		// extract is always relative to cwd, for now
 		// temporarily commented out because dst is no longer supported
 		// TODO add flag for destinatiion
-		//fname = filepath.Join(dst, fname)
+		fname = filepath.Join(t.OutDir, fname)
 		fmt.Printf("%s %s\n", fname, strconv.Itoa(int(header.Mode)))
 		switch header.Typeflag {
 		case tar.TypeDir:

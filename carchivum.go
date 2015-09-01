@@ -115,6 +115,10 @@ func getFileFormat(r io.ReaderAt) (Format, error) {
 	return UnsupportedFmt, UnsupportedFmt.NotSupportedError()
 }
 
+func isLZ4(r io.ReaderAt) (bool, error) {
+
+}
+
 func (f Format) String() string {
 	switch f {
 	case GzipFmt:
@@ -202,7 +206,7 @@ type Car struct {
 	Group int
 	os.FileMode
 	// Extract operation modifiers
-
+	UseFullpath bool
 	// Local file selection
 	// List of files to delete if applicable.
 	deleteList     []string

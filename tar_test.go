@@ -12,9 +12,8 @@ import (
 func TestGzipTar(t *testing.T) {
 	tmpDir, err := CreateTempFiles()
 	assert.Nil(t, err)
-	newT := NewTar()
+	newT := NewTar(filepath.Join(tmpDir, "test.tgz"))
 	newT.Format = GzipFmt
-	newT.Name = filepath.Join(tmpDir, "test.tgz")
 	// Test CreateTar
 	cnt, err := newT.Create(newT.Name, filepath.Join(tmpDir, "test"))
 	assert.Nil(t, err)
@@ -23,18 +22,20 @@ func TestGzipTar(t *testing.T) {
 	tFi, err := os.Stat(newT.Name)
 	assert.Nil(t, err)
 	// check range because the returned size can vary by a few bytes.
-	if tFi.Size() < 230 || tFi.Size() > 236 {
-		t.Errorf("Expected Filesize to be 233 +- 3 bytes, got %d", tFi.Size())
+	if tFi.Size() == 0 {
+		t.Error("Expected Filesize to be  > 0. it wasn't")
 	}
 
 	// Test Extract T ar
 	srcF, err := os.Open(newT.Name)
 	assert.Nil(t, err)
 	defer srcF.Close()
-	err = newT.Extract(filepath.Join(srcF)
+	eDir := filepath.Join(tmpDir, "extract")
+	newT.OutDir = eDir
+	err = newT.ExtractArchive(srcF)
 	assert.Nil(t, err)
 	// see that the extracte files are there and are as expected.
-	eDir := filepath.Join(tmpDir, "tmp")
+	filepath.Join(tmpDir, "tmp")
 	fB, err := ioutil.ReadFile(filepath.Join(eDir, "test/test1.txt"))
 	assert.Nil(t, err)
 	assert.Equal(t, "some content\n", string(fB))
@@ -55,9 +56,8 @@ func TestGzipTar(t *testing.T) {
 func TestZTar(t *testing.T) {
 	tmpDir, err := CreateTempFiles()
 	assert.Nil(t, err)
-	newT := NewTar()
+	newT := NewTar(filepath.Join(tmpDir, "test.tz2"))
 	newT.Format = LZWFmt
-	newT.Name = filepath.Join(tmpDir, "test.tz2")
 	// Test CreateTar
 	cnt, err := newT.Create(filepath.Join(tmpDir, "test"))
 	assert.Nil(t, err)
@@ -70,13 +70,13 @@ func TestZTar(t *testing.T) {
 		t.Errorf("Expected Filesize to be 420 +- 10 bytes, got %d", tFi.Size())
 	}
 	// Test Extract T ar
-	srcF, err := os.Open(newT.Name)
-	assert.Nil(t, err)
-	defer srcF.Close()
-	err = newT.Extract(srcF)
+	eDir := filepath.Join(tmpDir, "extract")
+	newT = NewTar(filepath.Join(tmpDir, "test.tz2"))
+	newT.OutDir = eDir
+	newT.Format = LZWFmt
+	err = newT.Extract()
 	assert.Nil(t, err)
 	// see that the extracte files are there and are as expected.
-	eDir := filepath.Join(tmpDir, "tmp")
 	fB, err := ioutil.ReadFile(filepath.Join(eDir, "test/test1.txt"))
 	assert.Nil(t, err)
 	assert.Equal(t, "some content\n", string(fB))
