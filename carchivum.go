@@ -411,13 +411,11 @@ func Extract(dst, src string) error {
 		log.Print(err)
 		return err
 	}
+	defer f.Close()
 	if format == ZipFmt {
-		// Close for now, since Extract expects src and dst name
-		// TODO change it so zip expected a reader
-		f.Close()
 		zip := NewZip(src)
 		zip.OutDir = dst
-		err := zip.Extract()
+		err := zip.ExtractArchive(f)
 		if err != nil {
 			log.Print(err)
 		}
@@ -426,7 +424,7 @@ func Extract(dst, src string) error {
 	tar := NewTar(src)
 	tar.OutDir = dst
 	tar.Format = format
-	err = tar.Extract(f)
+	err = tar.ExtractArchive(f)
 	if err != nil {
 		log.Print(err)
 	}
