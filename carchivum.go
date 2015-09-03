@@ -21,8 +21,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"code.google.com/p/go.crypto/ssh"
 )
 
 const (
@@ -486,13 +484,4 @@ func getFileParts(s string) (dir, filename, ext string, err error) {
 	err = fmt.Errorf("unable to determine destination filename and extension")
 	log.Print(err)
 	return dir, filename, ext, err
-}
-
-func Push() error {
-	cfg := &ssh.ClientConfig{
-		User: "asd",
-		Auth: []ssh.AuthMethod{ssh.Password("asd")},
-	}
-	_ = cfg
-	return nil
 }
