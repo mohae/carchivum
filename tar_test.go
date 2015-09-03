@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/mohae/magicnum"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,7 +14,7 @@ func TestGzipTar(t *testing.T) {
 	tmpDir, err := CreateTempFiles()
 	assert.Nil(t, err)
 	newT := NewTar(filepath.Join(tmpDir, "test.tgz"))
-	newT.Format = GzipFmt
+	newT.Format = magicnum.Gzip
 	// Test CreateTar
 	cnt, err := newT.Create(newT.Name, filepath.Join(tmpDir, "test"))
 	assert.Nil(t, err)
@@ -57,7 +58,7 @@ func TestZTar(t *testing.T) {
 	tmpDir, err := CreateTempFiles()
 	assert.Nil(t, err)
 	newT := NewTar(filepath.Join(tmpDir, "test.tz2"))
-	newT.Format = LZWFmt
+	newT.Format = magicnum.LZW
 	// Test CreateTar
 	cnt, err := newT.Create(filepath.Join(tmpDir, "test"))
 	assert.Nil(t, err)
@@ -73,7 +74,7 @@ func TestZTar(t *testing.T) {
 	eDir := filepath.Join(tmpDir, "extract")
 	newT = NewTar(filepath.Join(tmpDir, "test.tz2"))
 	newT.OutDir = eDir
-	newT.Format = LZWFmt
+	newT.Format = magicnum.LZW
 	err = newT.Extract()
 	assert.Nil(t, err)
 	// see that the extracte files are there and are as expected.

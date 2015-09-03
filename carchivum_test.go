@@ -2,7 +2,6 @@ package carchivum
 
 import (
 	"archive/tar"
-	"bytes"
 	"compress/gzip"
 	"io/ioutil"
 	"os"
@@ -73,70 +72,6 @@ func CreateTempFiles() (dir string, err error) {
 		}
 	}
 	return tmpDir, nil
-}
-
-func TestGetFileFormat(t *testing.T) {
-	tests := []struct {
-		bytes       []byte
-		typ         Format
-		expectedErr string
-	}{
-		{[]byte{0x1f, 0x8b}, GzipFmt, ""},
-		{[]byte{0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x30, 0x30}, TarFmt, ""},
-		{[]byte{0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x20, 0x00}, TarFmt, ""},
-		{[]byte{0x50, 0x4b, 0x03, 0x04}, ZipFmt, ""},
-		{[]byte{0x50, 0x4b, 0x05, 0x06}, ZipEmptyFmt, "empty zip archive not supported"},
-		{[]byte{0x50, 0x4b, 0x07, 0x08}, ZipSpannedFmt, "spanned zip archive not supported"},
-		{[]byte{0x42, 0x5a, 0x68}, Bzip2Fmt, ""},
-		{[]byte{0x1f, 0xa0}, LZHFmt, "lzh not supported"},
-		{[]byte{0x1f, 0x9d}, LZWFmt, ""},
-		{[]byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x01, 0x00}, RARFmt, "rar post 5.0 not supported"},
-		{[]byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00}, RAROldFmt, "rar pre 1.5 not supported"},
-	}
-	for _, test := range tests {
-		r := bytes.NewReader(test.bytes)
-		format, err := getFileFormat(r)
-		if test.expectedErr != "" {
-			assert.Equal(t, test.expectedErr, err.Error())
-			continue
-		}
-
-		assert.Nil(t, err)
-		assert.Equal(t, test.typ, format)
-	}
-
-}
-
-func TestParseFormat(t *testing.T) {
-	tests := []struct {
-		value       string
-		expected    Format
-		expectedErr string
-	}{
-		{"gzip", GzipFmt, ""},
-		{"tar.gz", GzipFmt, ""},
-		{"tgz", GzipFmt, ""},
-		{"tar", TarFmt, ""},
-		{"zip", ZipFmt, ""},
-		{"taz", LZWFmt, ""},
-		{"tz", LZWFmt, ""},
-		{"tar.Z", LZWFmt, ""},
-		{"tbz", Bzip2Fmt, ""},
-		{"tbz2", Bzip2Fmt, ""},
-		{"tb2", Bzip2Fmt, ""},
-		{"tar.bz2", Bzip2Fmt, ""},
-	}
-
-	for _, test := range tests {
-		f, err := ParseFormat(test.value)
-		if test.expectedErr != "" {
-			assert.Equal(t, test.expectedErr, err.Error())
-			assert.Equal(t, UnsupportedFmt, f)
-			continue
-		}
-		assert.Nil(t, err)
-		assert.Equal(t, test.expected, f)
-	}
 }
 
 func TestGetFileParts(t *testing.T) {

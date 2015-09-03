@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/MichaelTJones/walk"
+	"github.com/mohae/magicnum"
 	"github.com/pierrec/lz4"
 )
 
@@ -24,7 +25,7 @@ import (
 type Tar struct {
 	Car
 	*tar.Writer
-	Format
+	magicnum.Format
 	sources []string
 }
 
@@ -62,22 +63,22 @@ func (t *Tar) Create(src ...string) (cnt int, err error) {
 		}
 	}()
 	switch t.Format {
-	case GzipFmt:
+	case magicnum.Gzip:
 		err = t.CreateGzip(tball)
 		if err != nil {
 			log.Print(err)
 			return 0, err
 		}
-	case Bzip2Fmt:
+	case magicnum.Bzip2:
 		err = fmt.Errorf("Bzip2 compression is not supported")
 		return 0, err
-	case LZWFmt:
+	case magicnum.LZW:
 		err = t.CreateZ(tball)
 		if err != nil {
 			log.Print(err)
 			return 0, err
 		}
-	case LZ4Fmt:
+	case magicnum.LZ4:
 		err = t.CreateLZ4(tball)
 		if err != nil {
 			log.Print(err)
@@ -255,7 +256,7 @@ func (t *Tar) Extract() error {
 		return err
 	}
 	// find its format
-	t.Format, err = getFileFormat(f)
+	t.Format, err = magicnum.GetFormat(f)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -270,18 +271,18 @@ func (t *Tar) Extract() error {
 
 func (t *Tar) ExtractArchive(src io.Reader) error {
 	switch t.Format {
-	case TarFmt:
+	case magicnum.Tar:
 		return t.ExtractTar(src)
-	case GzipFmt:
+	case magicnum.Gzip:
 		return t.ExtractTgz(src)
-	case Bzip2Fmt:
+	case magicnum.Bzip2:
 		return t.ExtractTbz(src)
-	case LZWFmt:
+	case magicnum.LZW:
 		return t.ExtractZ(src)
-	case LZ4Fmt:
+	case magicnum.LZ4:
 		return t.ExtractLZ4(src)
 	default:
-		return UnsupportedFmt.NotSupportedError()
+		return fmt.Errorf("%s is not a supported format", t.Format)
 	}
 	return nil
 }

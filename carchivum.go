@@ -11,9 +11,7 @@
 package carchivum
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -21,166 +19,17 @@ import (
 	"strings"
 	"sync"
 	"time"
-)
 
-const (
-	UnsupportedFmt Format = iota // Not a supported format
-	GzipFmt                      // Gzip compression format; always a tar
-	TarFmt                       // Tar format; normally used
-	Tar1Fmt                      // Tar1 header format; normalizes to FmtTar
-	Tar2Fmt                      // Tar1 header format; normalizes to FmtTar
-	ZipFmt                       // Zip archive
-	ZipEmptyFmt                  // Empty Zip Archive
-	ZipSpannedFmt                // Spanned Zip Archive
-	Bzip2Fmt                     // Bzip2 compression
-	LZHFmt                       // LZH compression
-	LZWFmt                       // LZW compression
-	LZ4Fmt                       // LZ4 compression
-	RARFmt                       // RAR 5.0 and later compression
-	RAROldFmt                    // Rar pre 1.5 compression
+	"github.com/mohae/magicnum"
 )
 
 func init() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 }
 
-// Format is a type for file format constants.
-type (
-	Format int
-)
-
 var unsetTime time.Time
 var CreateDir bool
-
-// Header information for common archive/compression formats.
-// Zip includes: zip, jar, odt, ods, odp, docx, xlsx, pptx, apx, odf, ooxml
-var (
-	headerGzip       = []byte{0x1f, 0x8b}
-	headerTar1       = []byte{0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x30, 0x30} // offset: 257
-	headerTar2       = []byte{0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x20, 0x00} // offset: 257
-	headerZip        = []byte{0x50, 0x4b, 0x03, 0x04}
-	headerZipEmpty   = []byte{0x50, 0x4b, 0x05, 0x06}
-	headerZipSpanned = []byte{0x50, 0x4b, 0x07, 0x08}
-	headerBzip2      = []byte{0x42, 0x5a, 0x68}
-	headerLZH        = []byte{0x1F, 0xa0}
-	headerLZW        = []byte{0x1F, 0x9d}
-	headerLZ4        = []byte{0x18, 0x4d, 0x22, 0x04}
-	headerRAR        = []byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x01, 0x00}
-	headerRAROld     = []byte{0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00}
-)
-
-// getFileFormat determines what format the file is in by checking the file's
-// header information.
-func getFileFormat(r io.ReaderAt) (Format, error) {
-	h := make([]byte, 8, 8)
-	r.ReadAt(h, 0)
-	if bytes.Equal(headerGzip, h[0:2]) {
-		return GzipFmt, nil
-	}
-	if bytes.Equal(headerZip, h[0:4]) {
-		return ZipFmt, nil
-	}
-	if bytes.Equal(headerLZW, h[0:2]) {
-		return LZWFmt, nil
-	}
-	if bytes.Equal(headerLZ4, h[0:4]) {
-		return LZ4Fmt, nil
-	}
-	// partially supported
-	if bytes.Equal(headerBzip2, h[0:3]) {
-		return Bzip2Fmt, nil
-	}
-	// unsupported
-	if bytes.Equal(headerRAROld, h[0:7]) {
-		return UnsupportedFmt, RAROldFmt.NotSupportedError()
-	}
-	if bytes.Equal(headerRAR, h[0:8]) {
-		return UnsupportedFmt, RARFmt.NotSupportedError()
-	}
-	if bytes.Equal(headerZipEmpty, h[0:4]) {
-		return UnsupportedFmt, ZipEmptyFmt.NotSupportedError()
-	}
-	if bytes.Equal(headerZipSpanned, h[0:4]) {
-		return UnsupportedFmt, ZipSpannedFmt.NotSupportedError()
-	}
-	if bytes.Equal(headerLZH, h[0:2]) {
-		return UnsupportedFmt, LZHFmt.NotSupportedError()
-	}
-	r.ReadAt(h, 257)
-	if bytes.Equal(headerTar1, h) || bytes.Equal(headerTar2, h) {
-		return TarFmt, nil
-	}
-	return UnsupportedFmt, UnsupportedFmt.NotSupportedError()
-}
-
-func isLZ4(r io.ReaderAt) (bool, error) {
-
-}
-
-func (f Format) String() string {
-	switch f {
-	case GzipFmt:
-		return "gzip"
-	case TarFmt, Tar1Fmt, Tar2Fmt:
-		return "tar"
-	case ZipFmt:
-		return "zip"
-	case ZipEmptyFmt:
-		return "empty zip archive"
-	case ZipSpannedFmt:
-		return "spanned zip archive"
-	case Bzip2Fmt:
-		return "bzip2"
-	case LZHFmt:
-		return "lzh"
-	case LZWFmt:
-		return "lzw"
-	case LZ4Fmt:
-		return "lz4"
-	case RARFmt:
-		return "rar post 5.0"
-	case RAROldFmt:
-		return "rar pre 1.5"
-	}
-	return "unsupported"
-}
-
-func FormatFromString(s string) Format {
-	s = strings.ToLower(s)
-	switch s {
-	case "gzip":
-		return GzipFmt
-	case "tar":
-		return TarFmt
-	case "zip":
-		return ZipFmt
-	case "bzip2":
-		return Bzip2Fmt
-	case "lzh":
-		return LZHFmt
-	case "lzw":
-		return LZWFmt
-	case "lz4":
-		return LZ4Fmt
-	case "rar":
-		return RARFmt
-	}
-	return UnsupportedFmt
-}
-
-// NotSupportedError returns a formatted error string
-func (f Format) NotSupportedError() error {
-	return fmt.Errorf("%s not supported", f.String())
-}
-
-var defaultFormat = GzipFmt
-
-// Options
-//var AppendDate bool
-//var o utputNameTimeFormat string = time.RFC3339
-//var UseNano bool
-//var Separator string = "-"
-//var MakeUnique bool = false
+var defaultFormat = magicnum.Gzip
 
 // default max random number for random number generation.
 var MaxRand = 10000
@@ -403,17 +252,17 @@ func Extract(dst, src string) error {
 		return err
 	}
 	// find its format
-	format, err := getFileFormat(f)
+	format, err := magicnum.GetFormat(f)
 	if err != nil {
 		log.Print(err)
 		return err
 	}
-	if format == UnsupportedFmt {
-		err := fmt.Errorf("%s: %s is not a supported format", src, format.String())
+	if !isSupported(format) {
+		err := fmt.Errorf("%s: %s is not a supported format", src, format)
 		log.Print(err)
 		return err
 	}
-	if format == ZipFmt {
+	if format == magicnum.Zip {
 		// close the file, the zip reader will open it
 		f.Close()
 		zip := NewZip(src)
@@ -433,25 +282,6 @@ func Extract(dst, src string) error {
 		log.Print(err)
 	}
 	return err
-}
-
-// ParseFormat takes a string and returns the
-func ParseFormat(s string) (Format, error) {
-	switch s {
-	case "gzip", "tar.gz", "tgz":
-		return GzipFmt, nil
-	case "tar":
-		return TarFmt, nil
-	case "lzw", "taz", "tz", "tar.Z":
-		return LZWFmt, nil
-	case "bz2", "tbz", "tb2", "tbz2", "tar.bz2":
-		return Bzip2Fmt, nil
-	case "lz4", "tar.lz4", "tz4":
-		return LZ4Fmt, nil
-	case "zip":
-		return ZipFmt, nil
-	}
-	return UnsupportedFmt, UnsupportedFmt.NotSupportedError()
 }
 
 //func formattedNow() string {
@@ -484,4 +314,12 @@ func getFileParts(s string) (dir, filename, ext string, err error) {
 	err = fmt.Errorf("unable to determine destination filename and extension")
 	log.Print(err)
 	return dir, filename, ext, err
+}
+
+func isSupported(format magicnum.Format) bool {
+	switch format {
+	case magicnum.Zip, magicnum.LZ4, magicnum.Tar, magicnum.LZW, magicnum.Gzip, magicnum.Bzip2:
+		return true
+	}
+	return false
 }
