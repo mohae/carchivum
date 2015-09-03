@@ -1,18 +1,14 @@
 package carchivum
 
-// tar implements the tape archive format.
-
 import (
 	"archive/tar"
 	"compress/bzip2"
 	"compress/gzip"
-	"compress/lzw"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"time"
 
@@ -72,12 +68,6 @@ func (t *Tar) Create(src ...string) (cnt int, err error) {
 	case magicnum.Bzip2:
 		err = fmt.Errorf("Bzip2 compression is not supported")
 		return 0, err
-	case magicnum.LZW:
-		err = t.CreateZ(tball)
-		if err != nil {
-			log.Print(err)
-			return 0, err
-		}
 	case magicnum.LZ4:
 		err = t.CreateLZ4(tball)
 		if err != nil {
@@ -128,6 +118,10 @@ func (t *Tar) CreateGzip(w io.Writer) (err error) {
 
 // CreateLZW compresses using LZW and LSB order using the passed writer.
 // TODO: address order so that it doesn't necessarily default to LSB
+// NOTE/TODO: NOT SUPPORTED for now. Need to get a better understanding of
+//     its magic number, if lzw has one. Might be best to leave lzw support
+//     for pdfs,
+/*
 func (t *Tar) CreateZ(w io.Writer) (err error) {
 	zw := lzw.NewWriter(w, lzw.LSB, 8)
 	// Close the file with error handling
@@ -141,6 +135,7 @@ func (t *Tar) CreateZ(w io.Writer) (err error) {
 	err = t.writeTar(zw)
 	return err
 }
+*/
 
 // CreateLZ4 creates a LZ4 compressed tarball using the passed writer.
 func (t *Tar) CreateLZ4(w io.Writer) (err error) {
@@ -277,8 +272,6 @@ func (t *Tar) ExtractArchive(src io.Reader) error {
 		return t.ExtractTgz(src)
 	case magicnum.Bzip2:
 		return t.ExtractTbz(src)
-	case magicnum.LZW:
-		return t.ExtractZ(src)
 	case magicnum.LZ4:
 		return t.ExtractLZ4(src)
 	default:
@@ -304,7 +297,6 @@ func (t *Tar) ExtractTar(src io.Reader) (err error) {
 		// temporarily commented out because dst is no longer supported
 		// TODO add flag for destinatiion
 		fname = filepath.Join(t.OutDir, fname)
-		fmt.Printf("%s %s\n", fname, strconv.Itoa(int(header.Mode)))
 		switch header.Typeflag {
 		case tar.TypeDir:
 			err = os.MkdirAll(fname, 0744)
@@ -391,11 +383,16 @@ func (t *Tar) ExtractTbz(src io.Reader) error {
 // ExtractZ extracts tarballs compressed with LZW, typically .Z extension.
 // TODO fix so that order and width get properly set. Assuming order isn't
 // good.
+// NOTE/TODO: NOT SUPPORTED for now I need to bet a better understanding for
+//     its magic numbers, if there are any for general lzw. Maybe it's best
+//     to use this just for pdf. gif, etc.
+/*
 func (t *Tar) ExtractZ(src io.Reader) error {
 	zR := lzw.NewReader(src, lzw.LSB, 8)
 	defer zR.Close()
 	return t.ExtractTar(zR)
 }
+*/
 
 // ExtractLZ4 extracts LZ4 compressed tarballs.
 func (t *Tar) ExtractLZ4(src io.Reader) error {

@@ -318,7 +318,7 @@ func getFileParts(s string) (dir, filename, ext string, err error) {
 
 func isSupported(format magicnum.Format) bool {
 	switch format {
-	case magicnum.Zip, magicnum.LZ4, magicnum.Tar, magicnum.LZW, magicnum.Gzip, magicnum.Bzip2:
+	case magicnum.Zip, magicnum.LZ4, magicnum.Tar, magicnum.Gzip, magicnum.Bzip2:
 		return true
 	}
 	return false
