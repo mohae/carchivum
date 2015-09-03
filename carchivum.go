@@ -257,7 +257,7 @@ func Extract(dst, src string) error {
 		log.Print(err)
 		return err
 	}
-	if !isSupported(format) {
+	if !IsSupported(format) {
 		err := fmt.Errorf("%s: %s is not a supported format", src, format)
 		log.Print(err)
 		return err
@@ -316,7 +316,7 @@ func getFileParts(s string) (dir, filename, ext string, err error) {
 	return dir, filename, ext, err
 }
 
-func isSupported(format magicnum.Format) bool {
+func IsSupported(format magicnum.Format) bool {
 	switch format {
 	case magicnum.Zip, magicnum.LZ4, magicnum.Tar, magicnum.Gzip, magicnum.Bzip2:
 		return true
