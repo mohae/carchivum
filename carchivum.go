@@ -43,7 +43,7 @@ var CPUMultiplier = 4
 // Car is a Compressed Archive. The struct holds information about Cars and
 // their processing.
 type Car struct {
-	sync.Mutex
+	mu sync.Mutex
 	// Name of the archive, this includes path information, if any.
 	Name       string
 	UseLongExt bool
@@ -138,14 +138,14 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 		log.Print(err)
 		return err
 	}
-	c.Mutex.Lock()
+	c.mu.Lock()
 	c.files++
 	c.bytes += fi.Size()
 	if c.DeleteArchived {
 		c.deleteList = append(c.deleteList, fullpath)
 	}
 	c.FileCh <- f
-	c.Mutex.Unlock()
+	c.mu.Unlock()
 	return nil
 }
 
