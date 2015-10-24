@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mohae/magicnum"
+	magicnum "github.com/mohae/magicnum/mcompress"
 	"github.com/stretchr/testify/assert"
 )
 

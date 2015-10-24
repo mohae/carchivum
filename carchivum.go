@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mohae/magicnum"
+	magicnum "github.com/mohae/magicnum/mcompress"
 )
 
 func init() {
