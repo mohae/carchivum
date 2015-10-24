@@ -74,6 +74,13 @@ func CreateTempFiles() (dir string, err error) {
 	return tmpDir, nil
 }
 
+func RemoveTmpDir(s string) error {
+	if s == "" {
+		return nil
+	}
+	return os.RemoveAll(s)
+}
+
 func TestGetFileParts(t *testing.T) {
 	tests := []struct {
 		value            string
