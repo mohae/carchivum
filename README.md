@@ -1,5 +1,6 @@
 carchivum
 =========
+[![Build Status](https://travis-ci.org/mohae/carchivum.png)](https://travis-ci.org/mohae/carchivum)
 ## About
 
 Carchivum is a package for working with compressed archives. Archivum is latin for archives. Carchivum is not an application, just a package that other applications can use to add compressed archive support.
