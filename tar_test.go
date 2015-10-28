@@ -7,21 +7,29 @@ import (
 	"testing"
 
 	magicnum "github.com/mohae/magicnum/mcompress"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestGzipTar(t *testing.T) {
 	tmpDir, err := CreateTempFiles()
-	assert.Nil(t, err)
+	if err != nil {
+		t.Errorf("Expected creation of temp files to result in no error, got %q", err)
+		return
+	}
 	newT := NewTar(filepath.Join(tmpDir, "test.tgz"))
 	newT.Format = magicnum.Gzip
 	// Test CreateTar
 	cnt, err := newT.Create(newT.Name, filepath.Join(tmpDir, "test"))
-	assert.Nil(t, err)
-	assert.Equal(t, 5, cnt)
+	if err != nil {
+		t.Errorf("Expected creation of tar to result in no error, got %q", err)
+	}
+	if cnt != 5 {
+		t.Errorf("Expected a count of 5; got %d", cnt)
+	}
 	// Check the created tarfile
 	tFi, err := os.Stat(newT.Name)
-	assert.Nil(t, err)
+	if err != nil {
+		t.Errorf("expected stat of created tar to not result in an error, got %q", err)
+	}
 	// check range because the returned size can vary by a few bytes.
 	if tFi.Size() == 0 {
 		t.Error("Expected Filesize to be  > 0. it wasn't")
@@ -29,67 +37,35 @@ func TestGzipTar(t *testing.T) {
 
 	// Test Extract Tar
 	srcF, err := os.Open(newT.Name)
-	assert.Nil(t, err)
+	if err != nil {
+		t.Errorf("expected open of %q to not result in an error, got %q", newT.Name, err)
+	}
 	defer srcF.Close()
 	eDir := filepath.Join(tmpDir, "extract")
 	newT.OutDir = eDir
 	err = newT.ExtractArchive(srcF)
-	assert.Nil(t, err)
+	if err != nil {
+		t.Errorf("expected extract of tar to not result in an error, got %q", err)
+	}
 	// see that the extracte files are there and are as expected.
 	filepath.Join(tmpDir, "tmp")
-	fB, err := ioutil.ReadFile(filepath.Join(eDir, "test/test1.txt"))
-	assert.Nil(t, err)
-	assert.Equal(t, "some content\n", string(fB))
 
-	fB, err = ioutil.ReadFile(filepath.Join(eDir, "test/test2.txt"))
-	assert.Nil(t, err)
-	assert.Equal(t, "some more content\n", string(fB))
-
-	fB, err = ioutil.ReadFile(filepath.Join(eDir, "test/dir/test1.txt"))
-	assert.Nil(t, err)
-	assert.Equal(t, "different content\n", string(fB))
-
-	fB, err = ioutil.ReadFile(filepath.Join(eDir, "test/dir/test2.txt"))
-	assert.Nil(t, err)
-	assert.Equal(t, "might be different content\n", string(fB))
+	tests := []struct {
+		path     string
+		expected string
+	}{
+		{"test/test1.txt", "some content\n"},
+		{"test/test2.txt", "some more content\n"},
+		{"test/dir/test1.txt", "different content\n"},
+		{"test/dir/test2.txt", "might be different content\n"},
+	}
+	for i, test := range tests {
+		fB, err := ioutil.ReadFile(filepath.Join(eDir, test.path))
+		if err != nil {
+			t.Errorf("%d: expected read of %q to not error; got %q", i, test.path, err)
+		}
+		if test.expected != string(fB) {
+			t.Errorf("%d: expected file to contents to be %q got %q", test.expected, string(fB))
+		}
+	}
 }
-
-// lzw not supported for now
-/*
-func TestZTar(t *testing.T) {
-	tmpDir, err := CreateTempFiles()
-	assert.Nil(t, err)
-	newT := NewTar(filepath.Join(tmpDir, "test.tar.Z"))
-	newT.Format = magicnum.LZW
-	// Test CreateTar
-	cnt, err := newT.Create(filepath.Join(tmpDir, "test"))
-	assert.Nil(t, err)
-	assert.Equal(t, 5, cnt)
-	// Check the created tarfile
-	_, err = os.Stat(newT.Name)
-	assert.Nil(t, err)
-	// Test Extract Tar
-	eDir := filepath.Join(tmpDir, "extract")
-	newT = NewTar(filepath.Join(tmpDir, "test.tar.Z"))
-	newT.OutDir = eDir
-	newT.Format = magicnum.LZW
-	err = newT.Extract()
-	assert.Nil(t, err)
-	// see that the extracte files are there and are as expected.
-	fB, err := ioutil.ReadFile(filepath.Join(eDir, "test/test1.txt"))
-	assert.Nil(t, err)
-	assert.Equal(t, "some content\n", string(fB))
-
-	fB, err = ioutil.ReadFile(filepath.Join(eDir, "test/test2.txt"))
-	assert.Nil(t, err)
-	assert.Equal(t, "some more content\n", string(fB))
-
-	fB, err = ioutil.ReadFile(filepath.Join(eDir, "test/dir/test1.txt"))
-	assert.Nil(t, err)
-	assert.Equal(t, "different content\n", string(fB))
-
-	fB, err = ioutil.ReadFile(filepath.Join(eDir, "test/dir/test2.txt"))
-	assert.Nil(t, err)
-	assert.Equal(t, "might be different content\n", string(fB))
-}
-*/

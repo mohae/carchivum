@@ -7,8 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 type testFile struct {
@@ -97,46 +95,22 @@ func TestGetFileParts(t *testing.T) {
 		{"../dir/name/test.tar", "../dir/name/", "test", "tar", ""},
 	}
 
-	for _, test := range tests {
+	for i, test := range tests {
 		dir, fname, ext, err := getFileParts(test.value)
-		if test.expectedErr != "" {
-			assert.Equal(t, test.expectedErr, err.Error())
+		if err != nil {
+			if err.Error() != test.expectedErr {
+				t.Errorf("%d: expected error to be %q, got %q", i, test.expectedErr, err)
+			}
 			continue
 		}
-		assert.Nil(t, err)
-		assert.Equal(t, test.expectedDir, dir)
-		assert.Equal(t, test.expectedFilename, fname)
-		assert.Equal(t, test.expectedExt, ext)
-
-	}
-}
-
-/*
-func TestAddFile(t *testing.T) {
-	tests := []struct {
-		value       string
-		expectedErr string
-		expectedB   int
-	}{
-		{"", "open : no such file or directory", 0},
-		{"test", "open test: no such file or directory", 0},
-		{"test_files/pixies/born-in-chicago.txt", "", 609},
-	}
-
-	for _, test := range tests {
-		buf := new(bytes.Buffer)
-		w := zip.NewWriter(buf)
-
-		b, err := addFile(w, test.value)
-		if test.expectedErr != "" {
-			assert.Equal(t, test.expectedErr, err.Error())
-			continue
+		if test.expectedDir != dir {
+			t.Errorf("%d: expected dir to be %q got %q", i, test.expectedDir, dir)
 		}
-
-		assert.Nil(t, err)
-		assert.Equal(t, test.expectedB, b)
-
-		w.Close()
+		if test.expectedFilename != fname {
+			t.Errorf("%d: expected filename to be %q got %q", i, test.expectedFilename, fname)
+		}
+		if test.expectedExt != ext {
+			t.Errorf("%d: expected ext to be %q got %q", i, test.expectedExt, ext)
+		}
 	}
 }
-*/
