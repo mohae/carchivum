@@ -264,6 +264,9 @@ func (t *Tar) Extract() error {
 	return err
 }
 
+// ExtractArchive takes a compressed tar archive, as an io.Reader.  If the compression
+// format used is supported, it will decompress and extract the contents of the tar;
+// otherwise it will return an error.
 func (t *Tar) ExtractArchive(src io.Reader) error {
 	switch t.Format {
 	case magicnum.Tar:
@@ -277,7 +280,6 @@ func (t *Tar) ExtractArchive(src io.Reader) error {
 	default:
 		return fmt.Errorf("%s is not a supported format", t.Format)
 	}
-	return nil
 }
 
 // ExtractTar extracts a tar file using the passed reader

@@ -1,13 +1,15 @@
 // Package carchivum works with compressed archives.
 //
-// Go's `archive` package, supports `tar` and `zip`
-// Go's `compress` package supports: bzip2, flate, gzip, lzw, zlib
-//
 // Carchivum supports zip and tar. For tar, archiver also supports
 // the following compression:
+//    gzip
+//    bzip2
+//    lz4
 //
-// When using archiver, compression is not optional.
-//
+// When creating a tar, compression is not optional. Carchivum does not support
+// everything tar does.  If a compression algorithm is used that tar does not support,
+// tar will not be able to decompress it; otherwise it should be compatible with tar,
+// for now.
 package carchivum
 
 import (
@@ -28,7 +30,7 @@ func init() {
 }
 
 var unsetTime time.Time
-var CreateDir bool
+var createDir bool
 var defaultFormat = magicnum.Gzip
 
 // default max random number for random number generation.
@@ -311,11 +313,9 @@ func getFileParts(s string) (dir, filename, ext string, err error) {
 		ext := parts[l-1]
 		return dir, filename, ext, nil
 	}
-	err = fmt.Errorf("unable to determine destination filename and extension")
-	log.Print(err)
-	return dir, filename, ext, err
 }
 
+// IsSupported returns whether or not a specific format is supported.
 func IsSupported(format magicnum.Format) bool {
 	switch format {
 	case magicnum.Zip, magicnum.LZ4, magicnum.Tar, magicnum.Gzip, magicnum.Bzip2:

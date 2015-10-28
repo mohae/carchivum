@@ -65,7 +65,7 @@ func TestGzipTar(t *testing.T) {
 			t.Errorf("%d: expected read of %q to not error; got %q", i, test.path, err)
 		}
 		if test.expected != string(fB) {
-			t.Errorf("%d: expected file to contents to be %q got %q", test.expected, string(fB))
+			t.Errorf("%d: expected file to contents to be %q got %q", i, test.expected, string(fB))
 		}
 	}
 }
