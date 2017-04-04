@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	magicnum "github.com/mohae/magicnum/mcompress"
+	magicnum "github.com/mohae/magicnum/compress"
 )
 
 func init() {
@@ -31,7 +31,7 @@ func init() {
 
 var unsetTime time.Time
 var createDir bool
-var defaultFormat = magicnum.Gzip
+var defaultFormat = magicnum.GZip
 
 // default max random number for random number generation.
 var MaxRand = 10000
@@ -318,7 +318,7 @@ func getFileParts(s string) (dir, filename, ext string, err error) {
 // IsSupported returns whether or not a specific format is supported.
 func IsSupported(format magicnum.Format) bool {
 	switch format {
-	case magicnum.Zip, magicnum.LZ4, magicnum.Tar, magicnum.Gzip, magicnum.Bzip2:
+	case magicnum.Zip, magicnum.LZ4, magicnum.Tar, magicnum.GZip, magicnum.BZip2:
 		return true
 	}
 	return false

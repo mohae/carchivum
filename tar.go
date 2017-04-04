@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/MichaelTJones/walk"
-	magicnum "github.com/mohae/magicnum/mcompress"
+	magicnum "github.com/mohae/magicnum/compress"
 	"github.com/pierrec/lz4"
 )
 
@@ -59,13 +59,13 @@ func (t *Tar) Create(src ...string) (cnt int, err error) {
 		}
 	}()
 	switch t.Format {
-	case magicnum.Gzip:
-		err = t.CreateGzip(tball)
+	case magicnum.GZip:
+		err = t.CreateGZip(tball)
 		if err != nil {
 			log.Print(err)
 			return 0, err
 		}
-	case magicnum.Bzip2:
+	case magicnum.BZip2:
 		err = fmt.Errorf("Bzip2 compression is not supported")
 		return 0, err
 	case magicnum.LZ4:
@@ -102,7 +102,7 @@ func (t *Tar) removeFiles() error {
 }
 
 // CreateGzip creates a GZip using the passed writer.
-func (t *Tar) CreateGzip(w io.Writer) (err error) {
+func (t *Tar) CreateGZip(w io.Writer) (err error) {
 	zw := gzip.NewWriter(w)
 	// Close the file with error handling
 	defer func() {
@@ -271,9 +271,9 @@ func (t *Tar) ExtractArchive(src io.Reader) error {
 	switch t.Format {
 	case magicnum.Tar:
 		return t.ExtractTar(src)
-	case magicnum.Gzip:
+	case magicnum.GZip:
 		return t.ExtractTgz(src)
-	case magicnum.Bzip2:
+	case magicnum.BZip2:
 		return t.ExtractTbz(src)
 	case magicnum.LZ4:
 		return t.ExtractLZ4(src)

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	magicnum "github.com/mohae/magicnum/mcompress"
+	magicnum "github.com/mohae/magicnum/compress"
 )
 
 func TestGzipTar(t *testing.T) {
@@ -16,7 +16,7 @@ func TestGzipTar(t *testing.T) {
 		return
 	}
 	newT := NewTar(filepath.Join(tmpDir, "test.tgz"))
-	newT.Format = magicnum.Gzip
+	newT.Format = magicnum.GZip
 	// Test CreateTar
 	cnt, err := newT.Create(newT.Name, filepath.Join(tmpDir, "test"))
 	if err != nil {
