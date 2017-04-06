@@ -33,13 +33,13 @@ var unsetTime time.Time
 var createDir bool
 var defaultFormat = magicnum.GZip
 
-// default max random number for random number generation.
+// MaxRand default max random number for pseudo-random number generation.
 var MaxRand = 10000
 
 // we assume this count isn't going to change during runtime
 var cpu = runtime.NumCPU()
 
-// Arbitrarily set the multiplier to some default value.
+// CPUMultiplier set the multiplier to some default value.
 var CPUMultiplier = 4
 
 // Car is a Compressed Archive. The struct holds information about Cars and
@@ -260,7 +260,7 @@ func Extract(dst, src string) error {
 		return err
 	}
 	if !IsSupported(format) {
-		err := fmt.Errorf("%s: %s is not a supported format", src, format)
+		err = fmt.Errorf("%s: %s is not a supported format", src, format)
 		log.Print(err)
 		return err
 	}
@@ -269,7 +269,7 @@ func Extract(dst, src string) error {
 		f.Close()
 		zip := NewZip(src)
 		zip.OutDir = dst
-		err := zip.Extract()
+		err = zip.Extract()
 		if err != nil {
 			log.Print(err)
 		}
@@ -297,20 +297,20 @@ func getFileParts(s string) (dir, filename, ext string, err error) {
 	l := len(parts)
 	switch l {
 	case 2:
-		filename := parts[0]
-		ext := parts[1]
+		filename = parts[0]
+		ext = parts[1]
 		return dir, filename, ext, nil
 	case 1:
-		filename := parts[0]
-		return dir, filename, ext, nil
+		filename = parts[0]
+		return dir, filename, "", nil
 	case 0:
 		err := fmt.Errorf("no destination filename found in %s", s)
 		log.Print(err)
-		return dir, filename, ext, err
+		return dir, "", "", err
 	default:
 		// join all but the last parts together with a "."
-		filename := strings.Join(parts[0:l-1], ".")
-		ext := parts[l-1]
+		filename = strings.Join(parts[0:l-1], ".")
+		ext = parts[l-1]
 		return dir, filename, ext, nil
 	}
 }

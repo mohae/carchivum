@@ -101,7 +101,7 @@ func (t *Tar) removeFiles() error {
 	return nil
 }
 
-// CreateGzip creates a GZip using the passed writer.
+// CreateGZip creates a GZip using the passed writer.
 func (t *Tar) CreateGZip(w io.Writer) (err error) {
 	zw := gzip.NewWriter(w)
 	// Close the file with error handling
