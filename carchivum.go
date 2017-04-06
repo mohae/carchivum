@@ -25,10 +25,6 @@ import (
 	magicnum "github.com/mohae/magicnum/compress"
 )
 
-func init() {
-	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
-}
-
 var unsetTime time.Time
 var createDir bool
 var defaultFormat = magicnum.GZip
@@ -125,7 +121,6 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 	var relPath string
 	relPath, err = filepath.Rel(root, p)
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 	if relPath == "," {
@@ -137,7 +132,6 @@ func (c *Car) AddFile(root, p string, fi os.FileInfo, err error) error {
 	}
 	f, err := os.Open(p)
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 	c.mu.Lock()
@@ -250,40 +244,28 @@ func Extract(dst, src string) error {
 	// determine the type of archive
 	f, err := os.Open(src)
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 	// find its format
 	format, err := magicnum.GetFormat(f)
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 	if !IsSupported(format) {
-		err = fmt.Errorf("%s: %s is not a supported format", src, format)
-		log.Print(err)
-		return err
+		return fmt.Errorf("%s: %s is not a supported format", src, format)
 	}
 	if format == magicnum.Zip {
 		// close the file, the zip reader will open it
 		f.Close()
 		zip := NewZip(src)
 		zip.OutDir = dst
-		err = zip.Extract()
-		if err != nil {
-			log.Print(err)
-		}
-		return err
+		return zip.Extract()
 	}
 	defer f.Close()
 	tar := NewTar(src)
 	tar.OutDir = dst
 	tar.Format = format
-	err = tar.ExtractArchive(f)
-	if err != nil {
-		log.Print(err)
-	}
-	return err
+	return tar.ExtractArchive(f)
 }
 
 //func formattedNow() string {

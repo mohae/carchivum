@@ -34,27 +34,21 @@ func NewTar(n string) *Tar {
 func (t *Tar) Create(src ...string) (cnt int, err error) {
 	// If there isn't a destination, return err
 	if t.Name == "" {
-		err = fmt.Errorf("destination required to create a tar archive")
-		log.Print(err)
-		return 0, err
+		return 0, fmt.Errorf("destination required to create a tar archive")
 	}
 	// If there aren't any sources, return err
 	if len(src) == 0 {
-		err = fmt.Errorf("a source is required to create a tar archive")
-		log.Print(err)
-		return 0, err
+		return 0, fmt.Errorf("a source is required to create a tar archive")
 	}
 	t.sources = src
 	// See if we can create the destination file before processing
 	tball, err := os.OpenFile(t.Name, os.O_RDWR|os.O_CREATE, 0744)
 	if err != nil {
-		log.Print(err)
 		return 0, err
 	}
 	defer func() {
 		cerr := tball.Close()
 		if cerr != nil && err == nil {
-			log.Print(cerr)
 			err = cerr
 		}
 	}()
@@ -62,7 +56,6 @@ func (t *Tar) Create(src ...string) (cnt int, err error) {
 	case magicnum.GZip:
 		err = t.CreateGZip(tball)
 		if err != nil {
-			log.Print(err)
 			return 0, err
 		}
 	case magicnum.BZip2:
@@ -71,7 +64,6 @@ func (t *Tar) Create(src ...string) (cnt int, err error) {
 	case magicnum.LZ4:
 		err = t.CreateLZ4(tball)
 		if err != nil {
-			log.Print(err)
 			return 0, err
 		}
 	default:
@@ -81,9 +73,7 @@ func (t *Tar) Create(src ...string) (cnt int, err error) {
 	if t.DeleteArchived {
 		err := t.removeFiles()
 		if err != nil {
-			err = fmt.Errorf("an error was encountered while deleting the archived files; some files may not be deleted: %q", err)
-			log.Print(err)
-			return 0, err
+			return 0, fmt.Errorf("an error was encountered while deleting the archived files; some files may not be deleted: %s", err)
 		}
 	}
 	t.setDelta()
@@ -94,7 +84,6 @@ func (t *Tar) removeFiles() error {
 	for _, file := range t.deleteList {
 		err := os.Remove(file)
 		if err != nil {
-			log.Print(err)
 			return err
 		}
 	}
@@ -108,7 +97,6 @@ func (t *Tar) CreateGZip(w io.Writer) (err error) {
 	defer func() {
 		cerr := zw.Close()
 		if cerr != nil && err == nil {
-			log.Print(cerr)
 			err = cerr
 		}
 	}()
@@ -150,7 +138,6 @@ func (t *Tar) writeTar(w io.Writer) (err error) {
 	defer func() {
 		cerr := t.Writer.Close()
 		if cerr != nil && err == nil {
-			log.Print(cerr)
 			err = cerr
 		}
 	}()
@@ -167,12 +154,10 @@ func (t *Tar) writeTar(w io.Writer) (err error) {
 	for _, source := range t.sources {
 		fullPath, err = filepath.Abs(source)
 		if err != nil {
-			log.Print(err)
 			return err
 		}
 		err = walk.Walk(fullPath, visitor)
 		if err != nil {
-			log.Print(err)
 			return err
 		}
 	}
@@ -190,7 +175,6 @@ func (t *Tar) Write() (*sync.WaitGroup, error) {
 		for f := range t.FileCh {
 			info, err := f.Stat()
 			if err != nil {
-				log.Print(err)
 				return err
 			}
 			if info.IsDir() {
@@ -198,7 +182,6 @@ func (t *Tar) Write() (*sync.WaitGroup, error) {
 			}
 			header, err := tar.FileInfoHeader(info, "")
 			if err != nil {
-				log.Print(err)
 				return err
 			}
 			header.Name = f.Name()
@@ -217,17 +200,14 @@ func (t *Tar) Write() (*sync.WaitGroup, error) {
 			header.ModTime = info.ModTime()
 			err = t.Writer.WriteHeader(header)
 			if err != nil {
-				log.Print(err)
 				return err
 			}
 			_, err = io.Copy(t.Writer, f)
 			if err != nil {
-				log.Print(err)
 				return err
 			}
 			err = f.Close()
 			if err != nil {
-				log.Print(err)
 				return err
 			}
 		}
@@ -247,21 +227,15 @@ func (t *Tar) Extract() error {
 	// open the file
 	f, err := os.Open(t.Name)
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 	// find its format
 	t.Format, err = magicnum.GetFormat(f)
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 	defer f.Close()
-	err = t.ExtractArchive(f)
-	if err != nil {
-		log.Print(err)
-	}
-	return err
+	return t.ExtractArchive(f)
 }
 
 // ExtractArchive takes a compressed tar archive, as an io.Reader.  If the compression
@@ -291,7 +265,6 @@ func (t *Tar) ExtractTar(src io.Reader) (err error) {
 			if err == io.EOF {
 				break
 			}
-			log.Print(err)
 			return err
 		}
 		fname := header.Name
@@ -303,13 +276,11 @@ func (t *Tar) ExtractTar(src io.Reader) (err error) {
 		case tar.TypeDir:
 			err = os.MkdirAll(fname, 0744)
 			if err != nil {
-				log.Print(err)
 				return err
 			}
 			// set the final element to the appropriate permission
 			err = os.Chmod(fname, os.FileMode(header.Mode))
 			if err != nil {
-				log.Print(err)
 				return err
 			}
 		case tar.TypeReg:
@@ -317,29 +288,23 @@ func (t *Tar) ExtractTar(src io.Reader) (err error) {
 			pdir := filepath.Dir(fname)
 			err = os.MkdirAll(pdir, 0744)
 			if err != nil {
-				log.Print(err)
 				return err
 			}
 			if err != nil {
-				log.Print(err)
 				return err
 			}
 			w, err := os.Create(fname)
 			if err != nil {
-				log.Print(err)
 				return err
 			}
 			io.Copy(w, tr)
 			err = os.Chmod(fname, os.FileMode(header.Mode))
 			if err != nil {
-				log.Print(err)
 				return err
 			}
 			w.Close()
 		default:
-			err = fmt.Errorf("Unable to extract type: %c in file %s", header.Typeflag, fname)
-			log.Print(err)
-			return err
+			return fmt.Errorf("Unable to extract type: %c in file %s", header.Typeflag, fname)
 		}
 	}
 	return nil
@@ -349,31 +314,26 @@ func (t *Tar) ExtractTar(src io.Reader) (err error) {
 func (t *Tar) ExtractGzip(src io.Reader) (err error) {
 	gR, err := gzip.NewReader(src)
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 	// Close the file with error handling
 	defer func() {
 		cerr := gR.Close()
 		if cerr != nil && err == nil {
-			log.Print(cerr)
 			err = cerr
 		}
 	}()
-	err = t.ExtractTar(gR)
-	return err
+	return t.ExtractTar(gR)
 }
 
 // ExtractTgz extracts GZip'd tarballs.
 func (t *Tar) ExtractTgz(src io.Reader) error {
 	gr, err := gzip.NewReader(src)
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 	defer gr.Close()
-	err = t.ExtractTar(gr)
-	return err
+	return t.ExtractTar(gr)
 }
 
 // ExtractTbz extracts Bzip2 compressed tarballs.
@@ -409,7 +369,6 @@ func extractTarFile(hdr *tar.Header, dst string, src io.Reader) error {
 	fI := hdr.FileInfo()
 	err := os.MkdirAll(filepath.Dir(fP), fI.Mode())
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 	if fI.IsDir() {
@@ -421,14 +380,12 @@ func extractTarFile(hdr *tar.Header, dst string, src io.Reader) error {
 
 	dF, err := os.OpenFile(fP, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fI.Mode())
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 	defer dF.Close()
 
 	_, err = io.Copy(dF, src)
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 	return nil

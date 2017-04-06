@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -32,20 +31,15 @@ func NewZip(n string) *Zip {
 func (z *Zip) Create(src ...string) (cnt int, err error) {
 	// If there isn't a destination, return err
 	if z.Car.Name == "" {
-		err = fmt.Errorf("destination required to create a zip archive")
-		log.Print(err)
-		return 0, err
+		return 0, fmt.Errorf("destination required to create a zip archive")
 	}
 	// If there aren't any sources, return err
 	if len(src) == 0 {
-		err = fmt.Errorf("a source is required to create a zip archive")
-		log.Print(err)
-		return 0, err
+		return 0, fmt.Errorf("a source is required to create a zip archive")
 	}
 	// See if we can create the destination file before processing
 	z.File, err = os.OpenFile(z.Car.Name, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
-		log.Print(err)
 		return 0, err
 	}
 	defer z.File.Close()
@@ -56,7 +50,6 @@ func (z *Zip) Create(src ...string) (cnt int, err error) {
 	z.FileCh = make(chan *os.File)
 	wait, err := z.write()
 	if err != nil {
-		log.Print(err)
 		return 0, err
 	}
 	var fullPath string
@@ -71,12 +64,10 @@ func (z *Zip) Create(src ...string) (cnt int, err error) {
 		// first get the absolute, its needed either way
 		fullPath, err = filepath.Abs(source)
 		if err != nil {
-			log.Print(err)
 			return 0, err
 		}
 		err = walk.Walk(fullPath, visitor)
 		if err != nil {
-			log.Print(err)
 			return 0, err
 		}
 	}
@@ -87,7 +78,6 @@ func (z *Zip) Create(src ...string) (cnt int, err error) {
 	// Copy the zip
 	_, err = z.File.Write(buf.Bytes())
 	if err != nil {
-		log.Print(err)
 		return 0, err
 	}
 	z.File.Close()
@@ -103,12 +93,10 @@ func ZipBytes(b []byte, name string) (n int, zipped []byte, err error) {
 	defer w.Close() // defer for convenience, though it may already be closed
 	f, err := w.Create(name)
 	if err != nil {
-		log.Print(err)
 		return 0, zipped, err
 	}
 	n, err = f.Write(b)
 	if err != nil {
-		log.Print(err)
 		return n, zipped, err
 	}
 	w.Close() // we need to close it to get the bytes.
@@ -140,7 +128,6 @@ func (z *Zip) write() (*sync.WaitGroup, error) {
 			defer f.Close()
 			info, err := f.Stat()
 			if err != nil {
-				log.Print(err)
 				return err
 			}
 			if info.IsDir() {
@@ -148,18 +135,15 @@ func (z *Zip) write() (*sync.WaitGroup, error) {
 			}
 			header, err := zip.FileInfoHeader(info)
 			if err != nil {
-				log.Print(err)
 				return err
 			}
 			header.Name = f.Name()
 			fw, err := z.Writer.CreateHeader(header)
 			if err != nil {
-				log.Print(err)
 				return err
 			}
 			_, err = io.Copy(fw, f)
 			if err != nil {
-				log.Print(err)
 				return err
 			}
 		}
@@ -173,29 +157,24 @@ func (z *Zip) write() (*sync.WaitGroup, error) {
 func (z *Zip) Extract() error {
 	r, err := zip.OpenReader(z.Car.Name)
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 	defer r.Close()
 	for _, f := range r.File {
 		rc, err := f.Open()
 		if err != nil {
-			log.Print(err)
 			return err
 		}
 		err = os.MkdirAll(filepath.Join(z.OutDir, filepath.Dir(f.Name)), 0755)
 		if err != nil {
-			log.Print(err)
 			return err
 		}
 		dF, err := os.Create(filepath.Join(z.OutDir, f.Name))
 		if err != nil {
-			log.Print(err)
 			return err
 		}
 		_, err = io.Copy(dF, rc)
 		if err != nil {
-			log.Print(err)
 			return err
 		}
 		rc.Close()
